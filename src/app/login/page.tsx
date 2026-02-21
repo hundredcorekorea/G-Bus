@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import Link from "next/link";
 
 type Mode = "login" | "signup";
+type AgreementKey = "terms" | "privacy";
 
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("login");
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
   const [gameNickname, setGameNickname] = useState("");
+  const [agreed, setAgreed] = useState<Record<AgreementKey, boolean>>({ terms: false, privacy: false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -32,19 +34,32 @@ export default function LoginPage() {
     router.push("/dashboard");
   };
 
+  const allAgreed = agreed.terms && agreed.privacy;
+
+  const toggleAll = (checked: boolean) => {
+    setAgreed({ terms: checked, privacy: checked });
+  };
+
   const handleSignup = async () => {
     if (!nickname.trim() || !gameNickname.trim()) {
       setError("닉네임과 인게임 닉네임은 필수입니다.");
       return;
     }
+    if (!allAgreed) {
+      setError("이용약관과 개인정보처리방침에 모두 동의해야 합니다.");
+      return;
+    }
     setLoading(true);
     setError("");
 
-    const { data, error: signupError } = await supabase.auth.signUp({
+    const { error: signupError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { display_name: nickname.trim() },
+        data: {
+          display_name: nickname.trim(),
+          game_nickname: gameNickname.trim(),
+        },
       },
     });
 
@@ -54,30 +69,7 @@ export default function LoginPage() {
       return;
     }
 
-    if (data.user) {
-      // G-Bus 앱 전용 프로필 생성
-      const { error: profileError } = await supabase.from("users").insert({
-        id: data.user.id,
-        nickname: nickname.trim(),
-        game_nickname: gameNickname.trim(),
-        hc_account_id: data.user.id,
-      });
-
-      if (profileError) {
-        setError("프로필 생성 실패: " + profileError.message);
-        setLoading(false);
-        return;
-      }
-
-      // Hundred Core 앱 등록 (실패해도 가입은 진행)
-      try {
-        await supabase.from("hc_app_registrations").insert({
-          user_id: data.user.id,
-          app_id: "gbus",
-        });
-      } catch { /* 무시 */ }
-    }
-
+    // DB 트리거가 users + hc_app_registrations 자동 생성
     router.push("/pending");
   };
 
@@ -164,36 +156,39 @@ export default function LoginPage() {
                   required
                 />
 
-                {/* 인증 안내 */}
-                <div className="bg-gbus-bg/40 rounded-xl p-4 border border-gbus-border/20">
-                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2">
-                    <span className="w-1.5 h-4 bg-gbus-accent rounded-full" />
-                    가입 후 디스코드 인증
-                  </h4>
-
-                  <ol className="text-xs text-gbus-text-muted space-y-2.5 list-decimal list-inside mb-4">
-                    <li>
-                      게임에서{" "}
-                      <kbd className="px-1.5 py-0.5 bg-gbus-surface-light border border-gbus-border/40 rounded-md text-[10px] font-mono text-gbus-primary-light">C</kbd>{" "}
-                      키 → <strong className="text-gbus-text">테이머 정보창</strong> 스크린샷
-                    </li>
-                    <li>
-                      <strong className="text-[#5865F2]">디스코드 #인증</strong> 채널에 업로드
-                    </li>
-                    <li>
-                      관리자 확인 후 <strong className="text-gbus-accent">승인 완료</strong>
-                    </li>
-                  </ol>
-
-                  <div className="border border-gbus-border/30 rounded-xl overflow-hidden">
-                    <div className="bg-gbus-surface/40 px-3 py-1.5 text-[10px] text-gbus-text-dim border-b border-gbus-border/30 font-medium">
-                      예시) 테이머 정보창
-                    </div>
-                    <img
-                      src="/example-tamer-info.png"
-                      alt="테이머 정보창 예시"
-                      className="w-full max-h-48 object-contain bg-gbus-bg"
+                {/* 약관 동의 */}
+                <div className="bg-gbus-bg/40 rounded-xl p-4 border border-gbus-border/20 space-y-3">
+                  <label className="flex items-center gap-2.5 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={allAgreed}
+                      onChange={(e) => toggleAll(e.target.checked)}
+                      className="w-4 h-4 rounded border-gbus-border/40 accent-gbus-primary cursor-pointer"
                     />
+                    <span className="text-sm font-bold group-hover:text-gbus-primary-light transition-colors">전체 동의</span>
+                  </label>
+
+                  <div className="border-t border-gbus-border/20 pt-3 space-y-2.5">
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={agreed.terms}
+                        onChange={(e) => setAgreed((prev) => ({ ...prev, terms: e.target.checked }))}
+                        className="w-3.5 h-3.5 rounded border-gbus-border/40 accent-gbus-primary cursor-pointer"
+                      />
+                      <span className="text-xs text-gbus-text-muted">[필수] 이용약관 동의</span>
+                      <Link href="/terms" target="_blank" className="ml-auto text-[10px] text-gbus-primary hover:text-gbus-primary-light underline underline-offset-2">보기</Link>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={agreed.privacy}
+                        onChange={(e) => setAgreed((prev) => ({ ...prev, privacy: e.target.checked }))}
+                        className="w-3.5 h-3.5 rounded border-gbus-border/40 accent-gbus-primary cursor-pointer"
+                      />
+                      <span className="text-xs text-gbus-text-muted">[필수] 개인정보처리방침 동의</span>
+                      <Link href="/privacy" target="_blank" className="ml-auto text-[10px] text-gbus-primary hover:text-gbus-primary-light underline underline-offset-2">보기</Link>
+                    </label>
                   </div>
                 </div>
               </>
