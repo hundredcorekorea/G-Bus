@@ -120,6 +120,16 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {/* HC 통합 회원가입 안내 */}
+          {mode === "signup" && (
+            <div className="mb-6 text-center">
+              <p className="text-lg font-bold text-white">Hundred Core에 오신 것을 환영합니다</p>
+              <p className="text-xs text-gbus-text-muted mt-1.5">
+                통합 계정 하나로 G-BUS를 포함한 모든 HC 앱을 이용할 수 있습니다
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Input
               label="이메일"
@@ -134,8 +144,8 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="6자 이상"
-              minLength={6}
+              placeholder="8자 이상"
+              minLength={8}
               required
             />
 
