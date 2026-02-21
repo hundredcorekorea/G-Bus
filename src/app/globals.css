@@ -1,20 +1,21 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-gbus-bg: #0b0e17;
-  --color-gbus-surface: #141825;
-  --color-gbus-surface-light: #1c2233;
-  --color-gbus-border: #2a3045;
+  --color-gbus-bg: #080b12;
+  --color-gbus-surface: #0f1219;
+  --color-gbus-surface-light: #161b28;
+  --color-gbus-border: #1e2538;
   --color-gbus-primary: #6c5ce7;
   --color-gbus-primary-light: #a29bfe;
+  --color-gbus-primary-dim: #4834d4;
   --color-gbus-accent: #00cec9;
   --color-gbus-accent-light: #55efc4;
   --color-gbus-danger: #ff6b6b;
-  --color-gbus-warning: #feca57;
-  --color-gbus-success: #55efc4;
+  --color-gbus-warning: #fdcb6e;
+  --color-gbus-success: #00b894;
   --color-gbus-text: #e8eaf0;
-  --color-gbus-text-muted: #8892b0;
-  --color-gbus-text-dim: #5a6480;
+  --color-gbus-text-muted: #7f8bab;
+  --color-gbus-text-dim: #4a5578;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -25,26 +26,244 @@ body {
   font-family: var(--font-sans);
 }
 
-/* 스크롤바 커스텀 */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: var(--color-gbus-bg);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-gbus-border);
-  border-radius: 3px;
+/* ============ 배경 효과 ============ */
+
+/* 그리드 배경 패턴 */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(108, 92, 231, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108, 92, 231, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-/* 토스트 애니메이션 */
+/* 히어로 배경 - 라디얼 그라디언트 + 그리드 */
+.hero-bg {
+  position: relative;
+}
+.hero-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(108, 92, 231, 0.15), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(0, 206, 201, 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(108, 92, 231, 0.06), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+.hero-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 움직이는 그라디언트 보더 */
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes rotate-border {
+  to { --border-angle: 360deg; }
+}
+.gradient-border {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--color-gbus-surface), var(--color-gbus-surface)) padding-box,
+    conic-gradient(from var(--border-angle), rgba(108,92,231,0.5), rgba(0,206,201,0.5), rgba(108,92,231,0.5)) border-box;
+  animation: rotate-border 4s linear infinite;
+}
+
+/* ============ 글로우 효과 ============ */
+.glow-primary {
+  box-shadow:
+    0 0 15px rgba(108, 92, 231, 0.2),
+    0 0 45px rgba(108, 92, 231, 0.08),
+    inset 0 0 15px rgba(108, 92, 231, 0.03);
+}
+.glow-accent {
+  box-shadow:
+    0 0 15px rgba(0, 206, 201, 0.2),
+    0 0 45px rgba(0, 206, 201, 0.08),
+    inset 0 0 15px rgba(0, 206, 201, 0.03);
+}
+.glow-text {
+  text-shadow: 0 0 20px rgba(108, 92, 231, 0.5), 0 0 40px rgba(108, 92, 231, 0.2);
+}
+
+/* ============ 스크롤바 커스텀 ============ */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-gbus-border); border-radius: 3px; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* ============ 애니메이션 ============ */
 @keyframes slide-in {
-  from { transform: translateY(-100%); opacity: 0; }
+  from { transform: translateY(-12px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 @keyframes slide-out {
   from { transform: translateY(0); opacity: 1; }
-  to { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(-12px); opacity: 0; }
 }
-.toast-enter { animation: slide-in 0.3s ease-out; }
-.toast-exit { animation: slide-out 0.3s ease-in; }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-up-delay {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(108, 92, 231, 0.25); }
+  50% { box-shadow: 0 0 30px rgba(108, 92, 231, 0.5), 0 0 60px rgba(108, 92, 231, 0.15); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes count-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
+.animate-fade-up { animation: fade-up 0.5s ease-out both; }
+.animate-fade-up-d1 { animation: fade-up 0.5s 0.1s ease-out both; }
+.animate-fade-up-d2 { animation: fade-up 0.5s 0.2s ease-out both; }
+.animate-fade-up-d3 { animation: fade-up 0.5s 0.3s ease-out both; }
+.animate-slide-in { animation: slide-in 0.25s ease-out; }
+.toast-enter { animation: slide-in 0.25s ease-out; }
+.toast-exit { animation: slide-out 0.25s ease-in; }
+.animate-pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-count-pulse { animation: count-pulse 0.4s ease-out; }
+
+/* ============ 시머 로딩 ============ */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-gbus-surface) 25%,
+    var(--color-gbus-surface-light) 50%,
+    var(--color-gbus-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ============ 그라디언트 텍스트 ============ */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-gbus-primary) 0%, var(--color-gbus-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-text-warm {
+  background: linear-gradient(135deg, var(--color-gbus-warning) 0%, var(--color-gbus-danger) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============ 카드 효과 ============ */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-hover:hover {
+  border-color: rgba(108, 92, 231, 0.4);
+  box-shadow:
+    0 8px 32px rgba(108, 92, 231, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-3px);
+}
+
+/* 글래스모피즘 카드 */
+.glass {
+  background: rgba(15, 18, 25, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(30, 37, 56, 0.6);
+}
+
+/* 인터랙티브 보더 글로우 */
+.border-glow {
+  position: relative;
+}
+.border-glow::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(108,92,231,0.2), transparent 40%, transparent 60%, rgba(0,206,201,0.2));
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.border-glow:hover::after {
+  opacity: 1;
+}
+
+/* ============ 버튼 애니메이션 ============ */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -75%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.08),
+    transparent
+  );
+  transform: skewX(-25deg);
+  transition: left 0.5s;
+}
+.btn-shine:hover::after {
+  left: 125%;
+}
+
+/* ============ 상태 인디케이터 ============ */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.status-dot-live {
+  background: var(--color-gbus-success);
+  box-shadow: 0 0 8px rgba(0, 184, 148, 0.5);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ============ 프로그레스 바 ============ */
+.progress-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-gbus-border);
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-gbus-primary), var(--color-gbus-accent));
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}

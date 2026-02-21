@@ -32,18 +32,18 @@ export function PromoCard({ placement, className = "" }: PromoCardProps) {
       href={ad.link}
       target="_blank"
       rel="noopener noreferrer"
-      className={`block bg-gradient-to-r from-gbus-primary/10 to-gbus-accent/10 border border-gbus-border rounded-xl p-4 hover:border-gbus-primary transition-colors ${className}`}
+      className={`block glass rounded-2xl p-4 hover:border-gbus-primary/30 transition-all duration-300 border-glow ${className}`}
     >
       <div className="flex items-center gap-3">
         {ad.img_url && (
-          <img src={ad.img_url} alt={ad.app_name} className="w-10 h-10 rounded-lg" />
+          <img src={ad.img_url} alt={ad.app_name} className="w-10 h-10 rounded-xl" />
         )}
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gbus-primary font-medium">{ad.app_name}</span>
-            <span className="text-[10px] text-gbus-text-dim">AD</span>
+            <span className="text-xs text-gbus-primary font-semibold">{ad.app_name}</span>
+            <span className="text-[9px] text-gbus-text-dim bg-gbus-surface-light/40 px-1.5 py-0.5 rounded-full font-medium uppercase tracking-wider">ad</span>
           </div>
-          <p className="text-sm font-medium">{ad.title}</p>
+          <p className="text-sm font-semibold mt-0.5">{ad.title}</p>
           <p className="text-xs text-gbus-text-muted">{ad.description}</p>
         </div>
       </div>

@@ -18,7 +18,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <input
           ref={ref}
-          className={`w-full px-3 py-2 bg-gbus-surface border border-gbus-border rounded-lg text-gbus-text placeholder:text-gbus-text-dim focus:outline-none focus:border-gbus-primary focus:ring-1 focus:ring-gbus-primary transition-colors ${error ? "border-gbus-danger" : ""} ${className}`}
+          className={`w-full px-4 py-2.5 bg-gbus-surface/80 backdrop-blur-sm border border-gbus-border/60 rounded-xl text-gbus-text placeholder:text-gbus-text-dim focus:outline-none focus:border-gbus-primary focus:ring-2 focus:ring-gbus-primary/20 focus:shadow-[0_0_12px_rgba(124,109,240,0.15)] transition-all duration-200 ${
+            error ? "border-gbus-danger focus:border-gbus-danger focus:ring-gbus-danger/20" : ""
+          } ${className}`}
           {...props}
         />
         {error && <p className="text-xs text-gbus-danger">{error}</p>}

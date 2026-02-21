@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
@@ -15,25 +15,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
   const [gameNickname, setGameNickname] = useState("");
-  const [screenshot, setScreenshot] = useState<File | null>(null);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const supabase = createClient();
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setError("파일 크기는 5MB 이하여야 합니다.");
-      return;
-    }
-    setScreenshot(file);
-    setScreenshotPreview(URL.createObjectURL(file));
-    setError("");
-  };
 
   const handleLogin = async () => {
     setLoading(true);
@@ -52,17 +37,15 @@ export default function LoginPage() {
       setError("닉네임과 인게임 닉네임은 필수입니다.");
       return;
     }
-    if (!screenshot) {
-      setError("테이머 정보창 스크린샷을 업로드해 주세요.");
-      return;
-    }
     setLoading(true);
     setError("");
 
-    // 1. 회원가입
     const { data, error: signupError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: { display_name: nickname.trim() },
+      },
     });
 
     if (signupError) {
@@ -72,31 +55,12 @@ export default function LoginPage() {
     }
 
     if (data.user) {
-      // 2. 스크린샷 업로드
-      const ext = screenshot.name.split(".").pop() || "png";
-      const filePath = `${data.user.id}/profile.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("profile-screenshots")
-        .upload(filePath, screenshot, { upsert: true });
-
-      if (uploadError) {
-        setError("스크린샷 업로드 실패: " + uploadError.message);
-        setLoading(false);
-        return;
-      }
-
-      // 3. 공개 URL 가져오기
-      const { data: urlData } = supabase.storage
-        .from("profile-screenshots")
-        .getPublicUrl(filePath);
-
-      // 4. 프로필 생성
+      // G-Bus 앱 전용 프로필 생성
       const { error: profileError } = await supabase.from("users").insert({
         id: data.user.id,
         nickname: nickname.trim(),
         game_nickname: gameNickname.trim(),
-        profile_screenshot_url: urlData.publicUrl,
+        hc_account_id: data.user.id,
       });
 
       if (profileError) {
@@ -104,6 +68,14 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
+
+      // Hundred Core 앱 등록 (실패해도 가입은 진행)
+      try {
+        await supabase.from("hc_app_registrations").insert({
+          user_id: data.user.id,
+          app_id: "gbus",
+        });
+      } catch { /* 무시 */ }
     }
 
     router.push("/pending");
@@ -116,20 +88,27 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md">
-        <Link href="/" className="block text-center mb-8">
-          <span className="text-3xl font-bold text-gbus-primary">G-BUS</span>
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 hero-bg">
+      <div className="w-full max-w-md animate-fade-up">
+        {/* 헤더 */}
+        <Link href="/" className="block text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gbus-primary/10 border border-gbus-primary/20 mb-4 animate-pulse-glow">
+            <span className="text-2xl font-black gradient-text">G</span>
+          </div>
+          <div className="text-2xl font-black gradient-text">G-BUS</div>
+          <div className="text-xs text-gbus-text-dim mt-1.5 tracking-wide">
+            Hundred Core 계정으로 로그인
+          </div>
         </Link>
 
-        <div className="bg-gbus-surface border border-gbus-border rounded-xl p-6">
+        <div className="glass rounded-2xl p-6">
           {/* 탭 */}
-          <div className="flex mb-6 bg-gbus-bg rounded-lg p-1">
+          <div className="flex mb-6 bg-gbus-bg/60 rounded-xl p-1">
             <button
               type="button"
-              className={`flex-1 py-2 text-sm rounded-md transition-colors cursor-pointer ${
+              className={`flex-1 py-2.5 text-sm rounded-xl font-semibold transition-all duration-300 cursor-pointer ${
                 mode === "login"
-                  ? "bg-gbus-primary text-white"
+                  ? "bg-gradient-to-r from-gbus-primary to-gbus-primary-dim text-white shadow-[0_2px_12px_rgba(108,92,231,0.3)]"
                   : "text-gbus-text-muted hover:text-gbus-text"
               }`}
               onClick={() => { setMode("login"); setError(""); }}
@@ -138,9 +117,9 @@ export default function LoginPage() {
             </button>
             <button
               type="button"
-              className={`flex-1 py-2 text-sm rounded-md transition-colors cursor-pointer ${
+              className={`flex-1 py-2.5 text-sm rounded-xl font-semibold transition-all duration-300 cursor-pointer ${
                 mode === "signup"
-                  ? "bg-gbus-primary text-white"
+                  ? "bg-gradient-to-r from-gbus-primary to-gbus-primary-dim text-white shadow-[0_2px_12px_rgba(108,92,231,0.3)]"
                   : "text-gbus-text-muted hover:text-gbus-text"
               }`}
               onClick={() => { setMode("signup"); setError(""); }}
@@ -185,109 +164,54 @@ export default function LoginPage() {
                   required
                 />
 
-                {/* 스크린샷 촬영 튜토리얼 */}
-                <div className="bg-gbus-bg rounded-lg p-4">
-                  <h4 className="text-sm font-semibold mb-3">테이머 정보창 스크린샷 촬영 방법</h4>
+                {/* 인증 안내 */}
+                <div className="bg-gbus-bg/40 rounded-xl p-4 border border-gbus-border/20">
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2">
+                    <span className="w-1.5 h-4 bg-gbus-accent rounded-full" />
+                    가입 후 디스코드 인증
+                  </h4>
 
-                  <ol className="text-xs text-gbus-text-muted space-y-2 list-decimal list-inside mb-4">
+                  <ol className="text-xs text-gbus-text-muted space-y-2.5 list-decimal list-inside mb-4">
                     <li>
-                      게임에 접속하여{" "}
-                      <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">C</kbd>{" "}
-                      키를 눌러 <strong className="text-gbus-text">테이머 정보창</strong>을 엽니다
+                      게임에서{" "}
+                      <kbd className="px-1.5 py-0.5 bg-gbus-surface-light border border-gbus-border/40 rounded-md text-[10px] font-mono text-gbus-primary-light">C</kbd>{" "}
+                      키 → <strong className="text-gbus-text">테이머 정보창</strong> 스크린샷
                     </li>
                     <li>
-                      닉네임과 레벨이 보이는 상태에서 스크린샷을 촬영합니다
-                      <div className="mt-1.5 flex flex-col gap-1">
-                        <span className="inline-flex items-center gap-1.5 flex-wrap">
-                          <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">Print Screen</kbd>
-                          <span className="text-gbus-text-dim">전체 화면 캡처</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 flex-wrap">
-                          <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">Win</kbd>
-                          <span className="text-gbus-text-dim">+</span>
-                          <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">Shift</kbd>
-                          <span className="text-gbus-text-dim">+</span>
-                          <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">S</kbd>
-                          <span className="text-gbus-text-dim">영역 선택 캡처</span>
-                        </span>
-                      </div>
+                      <strong className="text-[#5865F2]">디스코드 #인증</strong> 채널에 업로드
                     </li>
-                    <li>아래 업로드 버튼으로 스크린샷을 첨부합니다</li>
+                    <li>
+                      관리자 확인 후 <strong className="text-gbus-accent">승인 완료</strong>
+                    </li>
                   </ol>
 
-                  {/* 예시 이미지 */}
-                  <div className="border border-gbus-border rounded-lg overflow-hidden">
-                    <div className="bg-gbus-surface px-3 py-1.5 text-[10px] text-gbus-text-dim border-b border-gbus-border">
+                  <div className="border border-gbus-border/30 rounded-xl overflow-hidden">
+                    <div className="bg-gbus-surface/40 px-3 py-1.5 text-[10px] text-gbus-text-dim border-b border-gbus-border/30 font-medium">
                       예시) 테이머 정보창
                     </div>
                     <img
                       src="/example-tamer-info.png"
                       alt="테이머 정보창 예시"
-                      className="w-full max-h-52 object-contain bg-gbus-bg"
+                      className="w-full max-h-48 object-contain bg-gbus-bg"
                     />
                   </div>
-                </div>
-
-                {/* 스크린샷 업로드 */}
-                <div>
-                  <label className="text-sm font-medium text-gbus-text-muted block mb-1.5">
-                    테이머 정보창 스크린샷 <span className="text-gbus-danger">*</span>
-                  </label>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-
-                  {screenshotPreview ? (
-                    <div className="relative">
-                      <img
-                        src={screenshotPreview}
-                        alt="프로필 스크린샷 미리보기"
-                        className="w-full rounded-lg border border-gbus-border max-h-48 object-contain bg-gbus-bg"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setScreenshot(null);
-                          setScreenshotPreview(null);
-                          if (fileInputRef.current) fileInputRef.current.value = "";
-                        }}
-                        className="absolute top-2 right-2 w-6 h-6 bg-gbus-danger/80 hover:bg-gbus-danger text-white rounded-full text-xs flex items-center justify-center cursor-pointer"
-                      >
-                        X
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full py-8 border-2 border-dashed border-gbus-border rounded-lg hover:border-gbus-primary transition-colors cursor-pointer flex flex-col items-center gap-2"
-                    >
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gbus-text-dim">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                      <span className="text-sm text-gbus-text-muted">클릭하여 테이머 정보창 업로드</span>
-                      <span className="text-xs text-gbus-text-dim">PNG, JPG (최대 5MB)</span>
-                    </button>
-                  )}
                 </div>
               </>
             )}
 
             {error && (
-              <p className="text-sm text-gbus-danger bg-gbus-danger/10 px-3 py-2 rounded-lg">
+              <p className="text-sm text-gbus-danger bg-gbus-danger/10 px-4 py-2.5 rounded-xl border border-gbus-danger/20">
                 {error}
               </p>
             )}
 
-            <Button type="submit" loading={loading} size="lg" className="w-full mt-2">
+            <Button type="submit" loading={loading} size="lg" className="w-full mt-2 btn-shine">
               {mode === "login" ? "로그인" : "회원가입"}
             </Button>
+
+            <p className="text-[10px] text-gbus-text-dim text-center mt-3 opacity-60">
+              Hundred Core 계정 하나로 모든 HC 앱을 이용할 수 있습니다
+            </p>
           </form>
         </div>
       </div>

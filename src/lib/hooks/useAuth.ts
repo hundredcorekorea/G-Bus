@@ -3,13 +3,23 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import type { User } from "@/lib/types";
+import type { User, HCProfile } from "@/lib/types";
 
 export function useAuth() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
+  const [hcProfile, setHcProfile] = useState<HCProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+
+  const loadProfiles = async (userId: string) => {
+    const [{ data: gBusProfile }, { data: hcData }] = await Promise.all([
+      supabase.from("users").select("*").eq("id", userId).single(),
+      supabase.from("hc_profiles").select("*").eq("id", userId).single(),
+    ]);
+    setProfile(gBusProfile);
+    setHcProfile(hcData);
+  };
 
   useEffect(() => {
     const getUser = async () => {
@@ -17,12 +27,7 @@ export function useAuth() {
       setUser(user);
 
       if (user) {
-        const { data } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-        setProfile(data);
+        await loadProfiles(user.id);
       }
 
       setLoading(false);
@@ -34,14 +39,10 @@ export function useAuth() {
       async (_event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          const { data } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-          setProfile(data);
+          await loadProfiles(session.user.id);
         } else {
           setProfile(null);
+          setHcProfile(null);
         }
       }
     );
@@ -49,5 +50,5 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { user, profile, loading };
+  return { user, profile, hcProfile, loading };
 }

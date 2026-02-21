@@ -19,7 +19,6 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"pending" | "all">("pending");
-  const [previewImg, setPreviewImg] = useState<string | null>(null);
   const supabase = createClient();
 
   const fetchUsers = async () => {
@@ -60,6 +59,19 @@ export default function AdminUsersPage() {
     fetchUsers();
   };
 
+  const handleBarrackVerify = async (userId: string, verified: boolean) => {
+    const { error } = await supabase
+      .from("users")
+      .update({ barrack_verified: verified })
+      .eq("id", userId);
+    if (error) {
+      toast("배럭 인증 변경 실패: " + error.message, "error");
+      return;
+    }
+    toast(verified ? "배럭 인증 완료" : "배럭 인증 해제", "success");
+    fetchUsers();
+  };
+
   // 역할 변경 (admin만 가능)
   const handleRoleChange = async (userId: string, role: string) => {
     if (!me?.is_admin) {
@@ -87,28 +99,6 @@ export default function AdminUsersPage() {
     <div className="min-h-screen">
       <Header />
       <ToastContainer />
-
-      {/* 스크린샷 모달 */}
-      {previewImg && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setPreviewImg(null)}
-        >
-          <div className="max-w-3xl max-h-[90vh] relative" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={previewImg}
-              alt="프로필 스크린샷"
-              className="max-w-full max-h-[85vh] object-contain rounded-lg"
-            />
-            <button
-              onClick={() => setPreviewImg(null)}
-              className="absolute top-2 right-2 w-8 h-8 bg-gbus-danger hover:bg-gbus-danger/80 text-white rounded-full flex items-center justify-center cursor-pointer text-lg"
-            >
-              X
-            </button>
-          </div>
-        </div>
-      )}
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
@@ -145,24 +135,6 @@ export default function AdminUsersPage() {
                 className="bg-gbus-surface border border-gbus-border rounded-xl p-4"
               >
                 <div className="flex items-start gap-4">
-                  {/* 스크린샷 썸네일 */}
-                  {u.profile_screenshot_url ? (
-                    <button
-                      onClick={() => setPreviewImg(u.profile_screenshot_url)}
-                      className="flex-shrink-0 w-20 h-20 rounded-lg border border-gbus-border overflow-hidden bg-gbus-bg cursor-pointer hover:border-gbus-primary transition-colors"
-                    >
-                      <img
-                        src={u.profile_screenshot_url}
-                        alt={`${u.game_nickname} 프로필`}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ) : (
-                    <div className="flex-shrink-0 w-20 h-20 rounded-lg border border-gbus-border bg-gbus-bg flex items-center justify-center text-gbus-text-dim text-xs">
-                      미첨부
-                    </div>
-                  )}
-
                   {/* 유저 정보 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -172,6 +144,7 @@ export default function AdminUsersPage() {
                       ) : (
                         <Badge variant="warning">대기 중</Badge>
                       )}
+                      {u.barrack_verified && <Badge variant="success">배럭 인증</Badge>}
                       {u.is_admin && <Badge variant="accent">관리자</Badge>}
                       {u.is_moderator && <Badge variant="accent">부관리자</Badge>}
                     </div>
@@ -195,6 +168,16 @@ export default function AdminUsersPage() {
                           거절
                         </Button>
                       </div>
+                    )}
+                    {/* 배럭 인증 토글 (승인된 유저만) */}
+                    {u.verified && (
+                      <Button
+                        variant={u.barrack_verified ? "danger" : "secondary"}
+                        size="sm"
+                        onClick={() => handleBarrackVerify(u.id, !u.barrack_verified)}
+                      >
+                        {u.barrack_verified ? "배럭 해제" : "배럭 인증"}
+                      </Button>
                     )}
                     {/* 역할 관리 (admin만 보임) */}
                     {u.verified && me?.is_admin && u.id !== me.id && (

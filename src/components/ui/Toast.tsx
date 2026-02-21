@@ -8,11 +8,18 @@ interface ToastMessage {
   type: "info" | "success" | "warning" | "error";
 }
 
-const typeClasses = {
-  info: "bg-gbus-primary/90 border-gbus-primary-light",
-  success: "bg-green-900/90 border-gbus-success",
-  warning: "bg-yellow-900/90 border-gbus-warning",
-  error: "bg-red-900/90 border-gbus-danger",
+const typeStyles = {
+  info: "bg-gbus-primary/90 border-gbus-primary-light/40 shadow-[0_4px_24px_rgba(124,109,240,0.25)]",
+  success: "bg-gbus-success/90 border-gbus-success/40 shadow-[0_4px_24px_rgba(85,239,196,0.25)]",
+  warning: "bg-gbus-warning/90 border-gbus-warning/40 shadow-[0_4px_24px_rgba(254,202,87,0.25)]",
+  error: "bg-gbus-danger/90 border-gbus-danger/40 shadow-[0_4px_24px_rgba(255,107,107,0.25)]",
+};
+
+const typeIcons = {
+  info: "\u2139\uFE0F",
+  success: "\u2705",
+  warning: "\u26A0\uFE0F",
+  error: "\u274C",
 };
 
 // 글로벌 토스트 이벤트
@@ -42,12 +49,13 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2.5 max-w-sm">
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`toast-enter px-4 py-3 rounded-lg border text-sm text-white shadow-lg ${typeClasses[t.type]}`}
+          className={`toast-enter px-4 py-3 rounded-xl border backdrop-blur-md text-sm text-white font-medium flex items-center gap-2.5 ${typeStyles[t.type]}`}
         >
+          <span className="text-base">{typeIcons[t.type]}</span>
           {t.message}
         </div>
       ))}
