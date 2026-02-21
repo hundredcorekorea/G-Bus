@@ -30,6 +30,17 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // 리다이렉트 시 Supabase 세션 쿠키를 보존하는 헬퍼
+  const redirectTo = (path: string) => {
+    const url = request.nextUrl.clone();
+    url.pathname = path;
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value);
+    });
+    return redirectResponse;
+  };
+
   // 공개 경로
   const publicPaths = ["/", "/login", "/terms", "/privacy"];
   if (publicPaths.includes(pathname)) {
@@ -38,9 +49,7 @@ export async function updateSession(request: NextRequest) {
 
   // 미로그인 → 로그인 페이지
   if (!user) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return redirectTo("/login");
   }
 
   // 유저 프로필 조회 (verified, is_admin)
@@ -53,32 +62,24 @@ export async function updateSession(request: NextRequest) {
   // 프로필 없으면 pending으로
   if (!profile) {
     if (pathname !== "/pending") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/pending";
-      return NextResponse.redirect(url);
+      return redirectTo("/pending");
     }
     return supabaseResponse;
   }
 
   // 미승인 유저 → pending (pending 페이지는 허용)
   if (!profile.verified && pathname !== "/pending") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/pending";
-    return NextResponse.redirect(url);
+    return redirectTo("/pending");
   }
 
   // 승인된 유저가 pending 접근 → 대시보드
   if (profile.verified && pathname === "/pending") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+    return redirectTo("/dashboard");
   }
 
   // 관리자 경로 체크
   if (pathname.startsWith("/admin") && !profile.is_admin && !profile.is_moderator) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+    return redirectTo("/dashboard");
   }
 
   return supabaseResponse;
