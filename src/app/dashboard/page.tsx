@@ -6,7 +6,6 @@ import { Header } from "@/components/layout/Header";
 import { ToastContainer } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
 import { PromoCard } from "@/components/ads/PromoCard";
 import { POST_TYPE_LABEL } from "@/lib/constants";
 import Link from "next/link";
@@ -38,36 +37,41 @@ export default function DashboardPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    const fetch = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+    const fetchData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
 
-      const [sessionsRes, reservationsRes] = await Promise.all([
-        supabase
-          .from("bus_sessions")
-          .select("*, driver:users!bus_sessions_driver_id_fkey(nickname, game_nickname)")
-          .in("status", ["waiting", "running"])
-          .order("created_at", { ascending: false }),
-        user
-          ? supabase
-              .from("reservations")
-              .select("*, bus_session:bus_sessions(*)")
-              .eq("user_id", user.id)
-              .in("status", ["waiting", "called"])
-              .order("created_at", { ascending: false })
-          : Promise.resolve({ data: [] }),
-      ]);
+        const [sessionsRes, reservationsRes] = await Promise.all([
+          supabase
+            .from("bus_sessions")
+            .select("*, driver:users!bus_sessions_driver_id_fkey(nickname, game_nickname)")
+            .in("status", ["waiting", "running"])
+            .order("created_at", { ascending: false }),
+          user
+            ? supabase
+                .from("reservations")
+                .select("*, bus_session:bus_sessions(*)")
+                .eq("user_id", user.id)
+                .in("status", ["waiting", "called"])
+                .order("created_at", { ascending: false })
+            : Promise.resolve({ data: [] }),
+        ]);
 
-      setSessions((sessionsRes.data as (BusSession & { driver: User })[]) || []);
-      setMyReservations((reservationsRes.data as (Reservation & { bus_session: BusSession })[]) || []);
-      setLoading(false);
+        setSessions((sessionsRes.data as (BusSession & { driver: User })[]) || []);
+        setMyReservations((reservationsRes.data as (Reservation & { bus_session: BusSession })[]) || []);
+      } catch {
+        // 쿼리 실패 시 빈 상태로 표시
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetch();
+    fetchData();
 
     const channel = supabase
       .channel("dashboard-sessions")
       .on("postgres_changes", { event: "*", schema: "public", table: "bus_sessions" }, () => {
-        fetch();
+        fetchData();
       })
       .subscribe();
 
