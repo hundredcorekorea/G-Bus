@@ -2,16 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { toast } from "@/components/ui/Toast";
+import { toast, ToastContainer } from "@/components/ui/Toast";
 import type { User } from "@/lib/types";
 
+const roleLabel: Record<string, string> = {
+  admin: "관리자",
+  moderator: "부관리자",
+};
+
 export default function AdminUsersPage() {
+  const { profile: me } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"pending" | "all">("pending");
+  const [previewImg, setPreviewImg] = useState<string | null>(null);
   const supabase = createClient();
 
   const fetchUsers = async () => {
@@ -52,9 +60,56 @@ export default function AdminUsersPage() {
     fetchUsers();
   };
 
+  // 역할 변경 (admin만 가능)
+  const handleRoleChange = async (userId: string, role: string) => {
+    if (!me?.is_admin) {
+      toast("관리자만 역할을 변경할 수 있습니다.", "error");
+      return;
+    }
+    const updates: Record<string, boolean> = {
+      is_admin: role === "admin",
+      is_moderator: role === "moderator",
+    };
+    if (role === "user") {
+      updates.is_admin = false;
+      updates.is_moderator = false;
+    }
+    const { error } = await supabase.from("users").update(updates).eq("id", userId);
+    if (error) {
+      toast("역할 변경 실패: " + error.message, "error");
+      return;
+    }
+    toast(`${roleLabel[role] || "일반 유저"}로 변경되었습니다.`, "success");
+    fetchUsers();
+  };
+
   return (
     <div className="min-h-screen">
       <Header />
+      <ToastContainer />
+
+      {/* 스크린샷 모달 */}
+      {previewImg && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setPreviewImg(null)}
+        >
+          <div className="max-w-3xl max-h-[90vh] relative" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={previewImg}
+              alt="프로필 스크린샷"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+            <button
+              onClick={() => setPreviewImg(null)}
+              className="absolute top-2 right-2 w-8 h-8 bg-gbus-danger hover:bg-gbus-danger/80 text-white rounded-full flex items-center justify-center cursor-pointer text-lg"
+            >
+              X
+            </button>
+          </div>
+        </div>
+      )}
+
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">유저 관리</h1>
@@ -87,40 +142,74 @@ export default function AdminUsersPage() {
             {users.map((u) => (
               <div
                 key={u.id}
-                className="bg-gbus-surface border border-gbus-border rounded-xl p-4 flex items-center justify-between"
+                className="bg-gbus-surface border border-gbus-border rounded-xl p-4"
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">{u.nickname}</span>
-                    {u.verified ? (
-                      <Badge variant="success">승인됨</Badge>
-                    ) : (
-                      <Badge variant="warning">대기 중</Badge>
-                    )}
-                    {u.is_admin && <Badge variant="accent">관리자</Badge>}
+                <div className="flex items-start gap-4">
+                  {/* 스크린샷 썸네일 */}
+                  {u.profile_screenshot_url ? (
+                    <button
+                      onClick={() => setPreviewImg(u.profile_screenshot_url)}
+                      className="flex-shrink-0 w-20 h-20 rounded-lg border border-gbus-border overflow-hidden bg-gbus-bg cursor-pointer hover:border-gbus-primary transition-colors"
+                    >
+                      <img
+                        src={u.profile_screenshot_url}
+                        alt={`${u.game_nickname} 프로필`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ) : (
+                    <div className="flex-shrink-0 w-20 h-20 rounded-lg border border-gbus-border bg-gbus-bg flex items-center justify-center text-gbus-text-dim text-xs">
+                      미첨부
+                    </div>
+                  )}
+
+                  {/* 유저 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-medium">{u.nickname}</span>
+                      {u.verified ? (
+                        <Badge variant="success">승인됨</Badge>
+                      ) : (
+                        <Badge variant="warning">대기 중</Badge>
+                      )}
+                      {u.is_admin && <Badge variant="accent">관리자</Badge>}
+                      {u.is_moderator && <Badge variant="accent">부관리자</Badge>}
+                    </div>
+                    <div className="text-sm text-gbus-text-muted">
+                      인게임: <span className="text-gbus-text">{u.game_nickname}</span>
+                    </div>
+                    <div className="text-xs text-gbus-text-dim mt-1">
+                      명예 점수: {u.honor_score} | 노쇼: {u.noshow_count}회 |{" "}
+                      가입: {new Date(u.created_at).toLocaleDateString("ko-KR")}
+                    </div>
                   </div>
-                  <div className="text-sm text-gbus-text-muted">
-                    인게임: <span className="text-gbus-text">{u.game_nickname}</span>
-                    {u.game_server && (
-                      <span className="ml-2 text-gbus-text-dim">({u.game_server})</span>
+
+                  {/* 액션 버튼 */}
+                  <div className="flex flex-col gap-2 flex-shrink-0">
+                    {!u.verified && (
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleVerify(u.id)}>
+                          승인
+                        </Button>
+                        <Button variant="danger" size="sm" onClick={() => handleReject(u.id)}>
+                          거절
+                        </Button>
+                      </div>
                     )}
-                  </div>
-                  <div className="text-xs text-gbus-text-dim mt-1">
-                    명예 점수: {u.honor_score} | 노쇼: {u.noshow_count}회 |{" "}
-                    가입: {new Date(u.created_at).toLocaleDateString("ko-KR")}
+                    {/* 역할 관리 (admin만 보임) */}
+                    {u.verified && me?.is_admin && u.id !== me.id && (
+                      <select
+                        className="px-2 py-1 bg-gbus-bg border border-gbus-border rounded-lg text-xs text-gbus-text cursor-pointer"
+                        value={u.is_admin ? "admin" : u.is_moderator ? "moderator" : "user"}
+                        onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      >
+                        <option value="user">일반 유저</option>
+                        <option value="moderator">부관리자</option>
+                        <option value="admin">관리자</option>
+                      </select>
+                    )}
                   </div>
                 </div>
-
-                {!u.verified && (
-                  <div className="flex gap-2 ml-4">
-                    <Button size="sm" onClick={() => handleVerify(u.id)}>
-                      승인
-                    </Button>
-                    <Button variant="danger" size="sm" onClick={() => handleReject(u.id)}>
-                      거절
-                    </Button>
-                  </div>
-                )}
               </div>
             ))}
           </div>

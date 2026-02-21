@@ -2,9 +2,10 @@ export interface User {
   id: string;
   nickname: string;
   game_nickname: string;
-  game_server: string | null;
+  profile_screenshot_url: string | null;
   verified: boolean;
   is_admin: boolean;
+  is_moderator: boolean;
   honor_score: number;
   noshow_count: number;
   hc_account_id: string | null;

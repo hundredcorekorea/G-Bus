@@ -38,7 +38,7 @@ export function Header() {
               >
                 배럭
               </Link>
-              {profile.is_admin && (
+              {(profile.is_admin || profile.is_moderator) && (
                 <Link
                   href="/admin/users"
                   className="text-sm text-gbus-accent hover:text-gbus-accent-light transition-colors"

@@ -46,7 +46,7 @@ export async function updateSession(request: NextRequest) {
   // 유저 프로필 조회 (verified, is_admin)
   const { data: profile } = await supabase
     .from("users")
-    .select("verified, is_admin")
+    .select("verified, is_admin, is_moderator")
     .eq("id", user.id)
     .single();
 
@@ -75,7 +75,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 관리자 경로 체크
-  if (pathname.startsWith("/admin") && !profile.is_admin) {
+  if (pathname.startsWith("/admin") && !profile.is_admin && !profile.is_moderator) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

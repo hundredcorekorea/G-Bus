@@ -64,15 +64,16 @@ export default function PendingPage() {
                 <span className="text-gbus-text-dim">닉네임</span>
                 <span>{profile.nickname}</span>
               </div>
-              <div className="flex justify-between mb-1">
+              <div className="flex justify-between mb-2">
                 <span className="text-gbus-text-dim">인게임</span>
                 <span>{profile.game_nickname}</span>
               </div>
-              {profile.game_server && (
-                <div className="flex justify-between">
-                  <span className="text-gbus-text-dim">서버</span>
-                  <span>{profile.game_server}</span>
-                </div>
+              {profile.profile_screenshot_url && (
+                <img
+                  src={profile.profile_screenshot_url}
+                  alt="내 프로필 스크린샷"
+                  className="w-full rounded-lg border border-gbus-border max-h-32 object-contain"
+                />
               )}
             </div>
           )}
