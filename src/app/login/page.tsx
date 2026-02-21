@@ -53,7 +53,7 @@ export default function LoginPage() {
       return;
     }
     if (!screenshot) {
-      setError("인게임 프로필 스크린샷을 업로드해 주세요.");
+      setError("테이머 정보창 스크린샷을 업로드해 주세요.");
       return;
     }
     setLoading(true);
@@ -187,34 +187,51 @@ export default function LoginPage() {
 
                 {/* 스크린샷 촬영 튜토리얼 */}
                 <div className="bg-gbus-bg rounded-lg p-4">
-                  <h4 className="text-sm font-semibold mb-2">인게임 프로필 스크린샷 촬영 방법</h4>
-                  <ol className="text-xs text-gbus-text-muted space-y-1.5 list-decimal list-inside">
-                    <li>게임에 접속하여 <strong className="text-gbus-text">프로필 화면</strong>을 엽니다</li>
-                    <li>캐릭터 닉네임이 보이는 상태에서 스크린샷을 촬영합니다</li>
-                    <li className="pl-4 list-none">
-                      <span className="inline-flex items-center gap-1.5 mt-1 flex-wrap">
-                        <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">Print Screen</kbd>
-                        <span className="text-gbus-text-dim">전체 화면 캡처</span>
-                      </span>
+                  <h4 className="text-sm font-semibold mb-3">테이머 정보창 스크린샷 촬영 방법</h4>
+
+                  <ol className="text-xs text-gbus-text-muted space-y-2 list-decimal list-inside mb-4">
+                    <li>
+                      게임에 접속하여{" "}
+                      <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">C</kbd>{" "}
+                      키를 눌러 <strong className="text-gbus-text">테이머 정보창</strong>을 엽니다
                     </li>
-                    <li className="pl-4 list-none">
-                      <span className="inline-flex items-center gap-1.5 mt-1 flex-wrap">
-                        <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">Win</kbd>
-                        <span className="text-gbus-text-dim">+</span>
-                        <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">Shift</kbd>
-                        <span className="text-gbus-text-dim">+</span>
-                        <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">S</kbd>
-                        <span className="text-gbus-text-dim">영역 선택 캡처</span>
-                      </span>
+                    <li>
+                      닉네임과 레벨이 보이는 상태에서 스크린샷을 촬영합니다
+                      <div className="mt-1.5 flex flex-col gap-1">
+                        <span className="inline-flex items-center gap-1.5 flex-wrap">
+                          <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">Print Screen</kbd>
+                          <span className="text-gbus-text-dim">전체 화면 캡처</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 flex-wrap">
+                          <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">Win</kbd>
+                          <span className="text-gbus-text-dim">+</span>
+                          <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">Shift</kbd>
+                          <span className="text-gbus-text-dim">+</span>
+                          <kbd className="px-1.5 py-0.5 bg-gbus-surface border border-gbus-border rounded text-[10px] font-mono">S</kbd>
+                          <span className="text-gbus-text-dim">영역 선택 캡처</span>
+                        </span>
+                      </div>
                     </li>
                     <li>아래 업로드 버튼으로 스크린샷을 첨부합니다</li>
                   </ol>
+
+                  {/* 예시 이미지 */}
+                  <div className="border border-gbus-border rounded-lg overflow-hidden">
+                    <div className="bg-gbus-surface px-3 py-1.5 text-[10px] text-gbus-text-dim border-b border-gbus-border">
+                      예시) 테이머 정보창
+                    </div>
+                    <img
+                      src="/example-tamer-info.png"
+                      alt="테이머 정보창 예시"
+                      className="w-full max-h-52 object-contain bg-gbus-bg"
+                    />
+                  </div>
                 </div>
 
                 {/* 스크린샷 업로드 */}
                 <div>
                   <label className="text-sm font-medium text-gbus-text-muted block mb-1.5">
-                    프로필 스크린샷 <span className="text-gbus-danger">*</span>
+                    테이머 정보창 스크린샷 <span className="text-gbus-danger">*</span>
                   </label>
                   <input
                     ref={fileInputRef}
@@ -254,7 +271,7 @@ export default function LoginPage() {
                         <polyline points="17 8 12 3 7 8" />
                         <line x1="12" y1="3" x2="12" y2="15" />
                       </svg>
-                      <span className="text-sm text-gbus-text-muted">클릭하여 스크린샷 업로드</span>
+                      <span className="text-sm text-gbus-text-muted">클릭하여 테이머 정보창 업로드</span>
                       <span className="text-xs text-gbus-text-dim">PNG, JPG (최대 5MB)</span>
                     </button>
                   )}
