@@ -278,15 +278,15 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                           }`}>
                           <span>{b.char_name}{done && " (예약됨)"}</span>
                           {(b.tamer_lv != null || b.digi_lv != null) && (
-                            <span className="flex items-center gap-1.5 mt-0.5">
+                            <span className="flex items-center gap-1 mt-0.5">
                               {b.tamer_lv != null && (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] text-gbus-accent">
-                                  <span className="w-1.5 h-1.5 rounded-sm bg-gbus-accent/80" />{b.tamer_lv}
+                                <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-success/10 text-gbus-success border border-gbus-success/30">
+                                  {b.tamer_lv}
                                 </span>
                               )}
                               {b.digi_lv != null && (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] text-gbus-warning">
-                                  <span className="w-1.5 h-1.5 rounded-sm bg-gbus-warning/80" />{b.digi_lv}
+                                <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-warning/10 text-gbus-warning border border-gbus-warning/30">
+                                  {b.digi_lv}
                                 </span>
                               )}
                             </span>
@@ -451,13 +451,13 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                       {(r.tamer_lv != null || r.digi_lv != null) && (
                         <span className="flex items-center gap-1 ml-1">
                           {r.tamer_lv != null && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-gbus-accent">
-                              <span className="w-1.5 h-1.5 rounded-sm bg-gbus-accent/80" />{r.tamer_lv}
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gbus-success/10 text-gbus-success border border-gbus-success/30">
+                              {r.tamer_lv}
                             </span>
                           )}
                           {r.digi_lv != null && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-gbus-warning">
-                              <span className="w-1.5 h-1.5 rounded-sm bg-gbus-warning/80" />{r.digi_lv}
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gbus-warning/10 text-gbus-warning border border-gbus-warning/30">
+                              {r.digi_lv}
                             </span>
                           )}
                         </span>

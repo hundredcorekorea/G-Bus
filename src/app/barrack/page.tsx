@@ -125,8 +125,8 @@ export default function BarrackPage() {
           내 캐릭터 닉네임과 레벨을 등록해두면 예약 시 편리하게 선택할 수 있습니다.
         </p>
         <div className="flex items-center gap-3 text-[11px] text-gbus-text-dim mb-6">
-          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gbus-accent/80" />주인 레벨</span>
-          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gbus-warning/80" />하인 레벨</span>
+          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gbus-success/80" />주인 레벨</span>
+          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gbus-warning/70" />하인 레벨</span>
         </div>
 
         {/* 추가 */}
@@ -243,13 +243,13 @@ export default function BarrackPage() {
                       {(b.tamer_lv != null || b.digi_lv != null) && (
                         <span className="flex items-center gap-1 shrink-0">
                           {b.tamer_lv != null && (
-                            <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-gbus-accent">
-                              <span className="w-2 h-2 rounded-sm bg-gbus-accent/80" />{b.tamer_lv}
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gbus-success/10 text-gbus-success border border-gbus-success/30">
+                              {b.tamer_lv}
                             </span>
                           )}
                           {b.digi_lv != null && (
-                            <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-gbus-warning">
-                              <span className="w-2 h-2 rounded-sm bg-gbus-warning/80" />{b.digi_lv}
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gbus-warning/10 text-gbus-warning border border-gbus-warning/30">
+                              {b.digi_lv}
                             </span>
                           )}
                         </span>
