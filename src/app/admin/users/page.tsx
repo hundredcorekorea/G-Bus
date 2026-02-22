@@ -22,13 +22,18 @@ export default function AdminUsersPage() {
   const supabase = createClient();
 
   const fetchUsers = async () => {
-    let query = supabase.from("users").select("*").order("created_at", { ascending: false });
-    if (filter === "pending") {
-      query = query.eq("verified", false);
+    try {
+      let query = supabase.from("users").select("*").order("created_at", { ascending: false });
+      if (filter === "pending") {
+        query = query.eq("verified", false);
+      }
+      const { data } = await query;
+      setUsers(data || []);
+    } catch {
+      // 쿼리 실패 시 빈 목록 표시
+    } finally {
+      setLoading(false);
     }
-    const { data } = await query;
-    setUsers(data || []);
-    setLoading(false);
   };
 
   useEffect(() => {
