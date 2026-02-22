@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import type { User, HCProfile } from "@/lib/types";
@@ -16,24 +16,28 @@ export function useAuth() {
   const [profile, setProfile] = useState<User | null>(cachedProfile);
   const [hcProfile, setHcProfile] = useState<HCProfile | null>(cachedHcProfile);
   const [loading, setLoading] = useState(!cachedUser);
+  const profileLoadRef = useRef<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
     let mounted = true;
 
+    // 프로필 로딩을 onAuthStateChange 바깥에서 실행
+    // → 토큰 갱신 데드락 방지
     const loadProfiles = async (userId: string) => {
       if (cachedUserId === userId && cachedProfile) {
         if (mounted) {
           setProfile(cachedProfile);
           setHcProfile(cachedHcProfile);
+          setLoading(false);
         }
         return;
       }
 
       try {
         const [{ data: gBusProfile }, { data: hcData }] = await Promise.all([
-          supabase.from("users").select("*").eq("id", userId).single(),
-          supabase.from("hc_profiles").select("*").eq("id", userId).single(),
+          supabase.from("users").select("*").eq("id", userId).maybeSingle(),
+          supabase.from("hc_profiles").select("*").eq("id", userId).maybeSingle(),
         ]);
 
         cachedUserId = userId;
@@ -44,13 +48,16 @@ export function useAuth() {
           setHcProfile(hcData);
         }
       } catch {
-        // 프로필 로드 실패 시 무시 (loading은 finally에서 처리)
+        // 프로필 로드 실패 시 무시
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
 
-    // onAuthStateChange가 INITIAL_SESSION을 즉시 발생시킴 → 별도 init 불필요
+    // onAuthStateChange 콜백은 동기적으로만 상태 설정
+    // DB 쿼리는 콜백 바깥에서 비동기 실행 (데드락 방지)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
         const currentUser = session?.user ?? null;
         cachedUser = currentUser;
@@ -61,16 +68,22 @@ export function useAuth() {
             cachedUserId = null;
             cachedProfile = null;
           }
-          await loadProfiles(currentUser.id);
+          // 프로필 로딩을 setTimeout으로 auth lock 해제 후 실행
+          profileLoadRef.current = currentUser.id;
+          setTimeout(() => {
+            if (mounted && profileLoadRef.current === currentUser.id) {
+              loadProfiles(currentUser.id);
+            }
+          }, 0);
         } else {
+          profileLoadRef.current = null;
           cachedUserId = null;
           cachedProfile = null;
           cachedHcProfile = null;
           setProfile(null);
           setHcProfile(null);
+          setLoading(false);
         }
-
-        if (mounted) setLoading(false);
       }
     );
 
