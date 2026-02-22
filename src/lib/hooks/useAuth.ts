@@ -6,15 +6,16 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 import type { User, HCProfile } from "@/lib/types";
 
 // 모듈 레벨 캐시 (SPA 내 페이지 이동 시 재사용)
+let cachedUser: SupabaseUser | null = null;
 let cachedProfile: User | null = null;
 let cachedHcProfile: HCProfile | null = null;
 let cachedUserId: string | null = null;
 
 export function useAuth() {
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(cachedUser);
   const [profile, setProfile] = useState<User | null>(cachedProfile);
   const [hcProfile, setHcProfile] = useState<HCProfile | null>(cachedHcProfile);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cachedUser);
 
   useEffect(() => {
     const supabase = createClient();
@@ -52,6 +53,7 @@ export function useAuth() {
       async (event, session) => {
         if (!mounted) return;
         const currentUser = session?.user ?? null;
+        cachedUser = currentUser;
         setUser(currentUser);
 
         if (currentUser) {
