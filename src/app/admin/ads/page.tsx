@@ -119,7 +119,7 @@ export default function AdminAdsPage() {
                         {ad.active ? "활성" : "비활성"}
                       </Badge>
                       <Badge>{placementLabel[ad.placement]}</Badge>
-                      {ad.banner_url && <Badge variant="info">배너</Badge>}
+                      {ad.banner_url && <Badge variant="accent">배너</Badge>}
                     </div>
                     <p className="text-sm text-gbus-text-muted">{ad.title}</p>
                   </div>

@@ -15,7 +15,7 @@ import type { PostType, PriceType } from "@/lib/types";
 export default function NewSessionPage() {
   const { profile } = useAuth();
   const [postType, setPostType] = useState<PostType>("party");
-  const [dungeonIdx, setDungeonIdx] = useState(0);
+  const [selectedDungeons, setSelectedDungeons] = useState<number[]>([0]);
   const [priceType, setPriceType] = useState<PriceType>("fixed");
   const [priceT, setPriceT] = useState("");
   const [scheduledStart, setScheduledStart] = useState("");
@@ -24,18 +24,49 @@ export default function NewSessionPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const dungeon = DUNGEONS[dungeonIdx];
+  // 배럭 모집 시 barrackMinCount > 0인 던전만 표시
+  const availableDungeons = postType === "barrack_bus"
+    ? DUNGEONS.map((d, i) => ({ ...d, idx: i })).filter((d) => d.barrackMinCount > 0)
+    : DUNGEONS.map((d, i) => ({ ...d, idx: i }));
 
   const availableTypes: PostType[] = ["party"];
   if (profile?.verified) availableTypes.push("bus");
   if (profile?.barrack_verified) availableTypes.push("barrack_bus");
 
+  const toggleDungeon = (idx: number) => {
+    setSelectedDungeons((prev) => {
+      if (prev.includes(idx)) {
+        if (prev.length === 1) return prev; // 최소 1개 유지
+        return prev.filter((i) => i !== idx);
+      }
+      return [...prev, idx];
+    });
+  };
+
+  const handlePostTypeChange = (type: PostType) => {
+    setPostType(type);
+    // postType 변경 시 선택 초기화
+    if (type === "barrack_bus") {
+      const first = DUNGEONS.findIndex((d) => d.barrackMinCount > 0);
+      setSelectedDungeons(first >= 0 ? [first] : []);
+    } else {
+      setSelectedDungeons([0]);
+    }
+  };
+
+  const selectedNames = selectedDungeons.map((i) => DUNGEONS[i].name).join("");
+  const selectedPartySizes = selectedDungeons.map((i) => DUNGEONS[i].partySize);
+  const partySize = selectedPartySizes.some((s) => s === 4) ? 4 : 2;
+  const barrackMin = selectedDungeons.length > 0
+    ? Math.max(...selectedDungeons.map((i) => DUNGEONS[i].barrackMinCount))
+    : 0;
+
   const buildTitle = () => {
     if (postType === "party") {
-      return `${dungeon.name} ${dungeon.partySize}인파티 모집`;
+      return `${selectedNames} ${partySize}인파티 모집`;
     }
     if (postType === "bus") {
-      return `${dungeon.name} 승객모집 ${priceT ? priceT + "T" : ""}`.trim();
+      return `${selectedNames} 승객모집 ${priceT ? priceT + "T" : ""}`.trim();
     }
     const timeStr = scheduledStart
       ? new Date(scheduledStart).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
@@ -43,12 +74,16 @@ export default function NewSessionPage() {
     const priceStr = priceType === "auction"
       ? `역경매 ${priceT ? "희망 " + priceT + "T" : ""}`
       : priceT ? priceT + "T" : "";
-    return `${dungeon.name} 모집 ${dungeon.barrackMinCount}+@ ${timeStr} ${priceStr}`.trim();
+    return `${selectedNames} 모집 ${barrackMin}+@ ${timeStr} ${priceStr}`.trim();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (selectedDungeons.length === 0) {
+      toast("던전을 1개 이상 선택해 주세요.", "error");
+      return;
+    }
     if (postType === "bus" && !priceT) {
       toast("가격(T)을 입력해 주세요.", "error");
       return;
@@ -69,9 +104,9 @@ export default function NewSessionPage() {
 
     const title = buildTitle();
     const minCount = postType === "party"
-      ? dungeon.partySize
+      ? partySize
       : postType === "barrack_bus"
-        ? dungeon.barrackMinCount
+        ? barrackMin
         : 1;
 
     const { data, error } = await supabase
@@ -79,14 +114,14 @@ export default function NewSessionPage() {
       .insert({
         driver_id: user.id,
         title,
-        dungeon_name: dungeon.name,
+        dungeon_name: selectedDungeons.map((i) => DUNGEONS[i].name).join(","),
         post_type: postType,
         price_type: postType === "barrack_bus" ? priceType : "fixed",
         min_count: minCount,
         avg_round_minutes: avgRoundMinutes,
         price_t: priceT ? Number(priceT) : null,
         scheduled_start: scheduledStart || null,
-        party_size: postType === "party" ? dungeon.partySize : null,
+        party_size: postType === "party" ? partySize : null,
       })
       .select()
       .single();
@@ -120,7 +155,7 @@ export default function NewSessionPage() {
                   <button
                     key={type}
                     type="button"
-                    onClick={() => setPostType(type)}
+                    onClick={() => handlePostTypeChange(type)}
                     className={`flex-1 py-3 text-sm rounded-xl transition-all duration-300 cursor-pointer border font-semibold ${
                       postType === type
                         ? type === "barrack_bus"
@@ -142,28 +177,33 @@ export default function NewSessionPage() {
               )}
             </div>
 
-            {/* 던전 선택 */}
+            {/* 던전 선택 (다중) */}
             <div>
-              <label className="text-sm font-semibold text-gbus-text-muted block mb-2.5">던전</label>
-              <div className="grid grid-cols-2 gap-2">
-                {DUNGEONS.map((d, i) => (
-                  <button
-                    key={d.name}
-                    type="button"
-                    onClick={() => setDungeonIdx(i)}
-                    className={`py-3 px-4 text-sm rounded-xl transition-all duration-300 cursor-pointer border text-left ${
-                      dungeonIdx === i
-                        ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-text shadow-[0_0_12px_rgba(108,92,231,0.12)]"
-                        : "border-gbus-border/40 text-gbus-text-dim hover:border-gbus-text-dim hover:text-gbus-text-muted"
-                    }`}
-                  >
-                    <span className="font-medium">{d.name}</span>
-                    <span className="text-xs text-gbus-text-dim ml-1.5">
-                      {postType === "party" && `${d.partySize}인`}
-                      {postType === "barrack_bus" && `${d.barrackMinCount}+@`}
-                    </span>
-                  </button>
-                ))}
+              <label className="text-sm font-semibold text-gbus-text-muted block mb-2.5">
+                던전 <span className="text-gbus-primary-light">({selectedDungeons.length}개 선택)</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {availableDungeons.map((d) => {
+                  const selected = selectedDungeons.includes(d.idx);
+                  return (
+                    <button
+                      key={d.name}
+                      type="button"
+                      onClick={() => toggleDungeon(d.idx)}
+                      className={`py-2.5 px-3 text-sm rounded-xl transition-all duration-300 cursor-pointer border text-center ${
+                        selected
+                          ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-text shadow-[0_0_12px_rgba(108,92,231,0.12)]"
+                          : "border-gbus-border/40 text-gbus-text-dim hover:border-gbus-text-dim hover:text-gbus-text-muted"
+                      }`}
+                    >
+                      <span className="font-medium">{d.name}</span>
+                      <span className="text-[10px] text-gbus-text-dim block mt-0.5">
+                        {postType === "party" && `${d.partySize}인`}
+                        {postType === "barrack_bus" && `${d.barrackMinCount}+@`}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -220,7 +260,10 @@ export default function NewSessionPage() {
               <Input label="시작 시간대 (선택)" type="datetime-local" value={scheduledStart} onChange={(e) => setScheduledStart(e.target.value)} />
             )}
 
-            <Input label="회차당 예상 소요 시간 (분)" type="number" min={1} value={String(avgRoundMinutes)} onChange={(e) => setAvgRoundMinutes(Number(e.target.value))} />
+            {/* 파티 모집에서는 소요시간 제외 */}
+            {postType !== "party" && (
+              <Input label="회차당 예상 소요 시간 (분)" type="number" min={1} value={String(avgRoundMinutes)} onChange={(e) => setAvgRoundMinutes(Number(e.target.value))} />
+            )}
 
             {/* 미리보기 */}
             <div className="bg-gbus-bg/40 rounded-xl p-4 border border-gbus-border/20">

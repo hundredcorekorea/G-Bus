@@ -155,7 +155,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
               </div>
               <h1 className="text-2xl font-bold">{session.title}</h1>
               <div className="flex items-center gap-3 mt-2 text-sm text-gbus-text-muted flex-wrap">
-                <span>{session.dungeon_name}</span>
+                <span>{session.dungeon_name.replace(/,/g, " ")}</span>
                 {session.price_t != null && session.price_type !== "auction" && (
                   <span className="text-gbus-accent font-bold">{session.price_t}T</span>
                 )}

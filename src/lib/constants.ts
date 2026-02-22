@@ -15,12 +15,18 @@ export interface DungeonConfig {
 }
 
 export const DUNGEONS: DungeonConfig[] = [
-  { name: "로스메키이", partySize: 4, barrackMinCount: 30 },
-  { name: "로스메키이노", partySize: 4, barrackMinCount: 30 },
+  { name: "로어", partySize: 4, barrackMinCount: 0 },
+  { name: "스던", partySize: 4, barrackMinCount: 0 },
+  { name: "메청", partySize: 4, barrackMinCount: 0 },
+  { name: "키이", partySize: 4, barrackMinCount: 0 },
   { name: "메키이", partySize: 4, barrackMinCount: 30 },
-  { name: "키노", partySize: 4, barrackMinCount: 12 },
-  { name: "네버랜드", partySize: 4, barrackMinCount: 12 },
+  { name: "키노", partySize: 4, barrackMinCount: 24 },
   { name: "다크웹", partySize: 2, barrackMinCount: 20 },
+  { name: "네버", partySize: 4, barrackMinCount: 15 },
+  { name: "사성수노말", partySize: 4, barrackMinCount: 0 },
+  { name: "사성수어려움", partySize: 4, barrackMinCount: 0 },
+  { name: "판노", partySize: 4, barrackMinCount: 0 },
+  { name: "판어", partySize: 4, barrackMinCount: 0 },
 ];
 
 // 글 타입 라벨
