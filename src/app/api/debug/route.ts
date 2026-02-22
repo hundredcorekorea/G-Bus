@@ -5,13 +5,24 @@ import { cookies } from "next/headers";
 export async function GET() {
   const results: Record<string, unknown> = {};
 
-  // 1. 환경변수 체크
-  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "MISSING").trim();
-  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "MISSING").trim();
+  // 1. 환경변수 체크 (raw vs trimmed)
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "MISSING";
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "MISSING";
+  const url = rawUrl.trim();
+  const key = rawKey.trim();
+
+  // 마지막 5글자 charCode 확인
+  const lastChars = Array.from(rawKey.slice(-5)).map((c, i) => ({
+    pos: rawKey.length - 5 + i,
+    char: c,
+    code: c.charCodeAt(0),
+  }));
+
   results.envCheck = {
-    url: url.substring(0, 30) + "...",
+    rawKeyLength: rawKey.length,
+    trimmedKeyLength: key.length,
     keyPrefix: key.substring(0, 20) + "...",
-    keyLength: key.length,
+    lastChars,
   };
 
   // 2. Supabase 연결 테스트
