@@ -57,6 +57,7 @@ export interface Reservation {
   user_id: string;
   char_name: string;
   queue_no: number;
+  positions: string[] | null;
   status: "waiting" | "called" | "done" | "noshow";
   created_at: string;
   // joined

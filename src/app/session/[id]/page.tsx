@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { toast, ToastContainer } from "@/components/ui/Toast";
 import { PromoCard } from "@/components/ads/PromoCard";
-import { QUEUE_ALERT_BEFORE, NOSHOW_PENALTY_SCORE, POST_TYPE_LABEL } from "@/lib/constants";
+import { QUEUE_ALERT_BEFORE, NOSHOW_PENALTY_SCORE, POST_TYPE_LABEL, POSITIONS, type Position } from "@/lib/constants";
 import type { Barrack, Bid } from "@/lib/types";
 
 const statusLabel = { waiting: "대기 중", running: "운행 중", completed: "완료", cancelled: "취소됨" };
@@ -24,12 +24,20 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const [reserving, setReserving] = useState(false);
   const [showReservePanel, setShowReservePanel] = useState(false);
   const [bids, setBids] = useState<(Bid & { driver: { nickname: string; game_nickname: string } })[]>([]);
+  const [selectedPositions, setSelectedPositions] = useState<Position[]>([]);
   const [bidPrice, setBidPrice] = useState("");
   const [bidMessage, setBidMessage] = useState("");
   const [bidding, setBidding] = useState(false);
   const supabase = createClient();
 
   const isDriver = session?.driver_id === user?.id;
+  const isParty = session?.post_type === "party";
+
+  const togglePosition = (pos: Position) => {
+    setSelectedPositions((prev) =>
+      prev.includes(pos) ? prev.filter((p) => p !== pos) : [...prev, pos]
+    );
+  };
   const waitingReservations = reservations.filter((r) => r.status === "waiting");
   const calledReservation = reservations.find((r) => r.status === "called");
   const doneCount = reservations.filter((r) => r.status === "done").length;
@@ -89,9 +97,17 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const handleReserve = async () => {
     if (selectedBarracks.length === 0) { toast("예약할 캐릭터를 선택하세요.", "error"); return; }
     setReserving(true);
-    const { error } = await supabase.rpc("reserve_bulk", { p_session_id: sessionId, p_user_id: user!.id, p_char_names: selectedBarracks });
+    const rpcParams: Record<string, unknown> = {
+      p_session_id: sessionId,
+      p_user_id: user!.id,
+      p_char_names: selectedBarracks,
+    };
+    if (isParty && selectedPositions.length > 0) {
+      rpcParams.p_positions = selectedPositions;
+    }
+    const { error } = await supabase.rpc("reserve_bulk", rpcParams);
     if (error) toast("예약 실패: " + error.message, "error");
-    else { toast(`${selectedBarracks.length}개 캐릭터 예약 완료!`, "success"); setSelectedBarracks([]); setShowReservePanel(false); }
+    else { toast(`${selectedBarracks.length}개 캐릭터 예약 완료!`, "success"); setSelectedBarracks([]); setSelectedPositions([]); setShowReservePanel(false); }
     setReserving(false);
   };
 
@@ -192,21 +208,23 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
           </div>
         )}
 
-        {/* 기사 컨트롤 */}
+        {/* 기사/파장 컨트롤 */}
         {isDriver && (
           <div className="glass rounded-2xl p-6 mb-5">
             <h3 className="font-bold mb-4 flex items-center gap-2.5">
-              <span className="w-1.5 h-4 bg-gbus-accent rounded-full" />기사 컨트롤
+              <span className="w-1.5 h-4 bg-gbus-accent rounded-full" />{isParty ? "파장 컨트롤" : "기사 컨트롤"}
             </h3>
             <div className="flex flex-wrap gap-2">
-              {session.status === "waiting" && <Button onClick={() => handleSessionStatus("running")} className="btn-shine">운행 시작</Button>}
+              {session.status === "waiting" && <Button onClick={() => handleSessionStatus("running")} className="btn-shine">{isParty ? "모집 마감" : "운행 시작"}</Button>}
               {session.status === "running" && (
                 <>
-                  <Button variant="accent" onClick={handleCallNext} className="btn-shine">
-                    다음 호출 {waitingReservations.length > 0 && `(#${waitingReservations[0].queue_no})`}
-                  </Button>
-                  <Button variant="secondary" onClick={handleNextRound}>R{session.round + 1} 진행</Button>
-                  <Button variant="secondary" onClick={() => handleSessionStatus("completed")}>운행 종료</Button>
+                  {!isParty && (
+                    <Button variant="accent" onClick={handleCallNext} className="btn-shine">
+                      다음 호출 {waitingReservations.length > 0 && `(#${waitingReservations[0].queue_no})`}
+                    </Button>
+                  )}
+                  {!isParty && <Button variant="secondary" onClick={handleNextRound}>R{session.round + 1} 진행</Button>}
+                  <Button variant="secondary" onClick={() => handleSessionStatus("completed")}>{isParty ? "파티 완료" : "운행 종료"}</Button>
                 </>
               )}
               {(session.status === "waiting" || session.status === "running") && (
@@ -214,7 +232,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
               )}
             </div>
 
-            {calledReservation && (
+            {!isParty && calledReservation && (
               <div className="mt-4 bg-gbus-accent/8 border border-gbus-accent/20 rounded-xl p-4">
                 <div className="text-xs text-gbus-accent mb-1.5 font-bold uppercase tracking-wider">현재 호출</div>
                 <div className="flex items-center justify-between">
@@ -264,11 +282,46 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                     })}
                   </div>
                 )}
+                {/* 포지션 선택 (파티만) */}
+                {isParty && (
+                  <div className="mb-4">
+                    <label className="text-sm font-semibold text-gbus-text-muted block mb-2.5">
+                      포지션 <span className="text-gbus-text-dim font-normal">(미선택 = 올포지션)</span>
+                    </label>
+                    <div className="flex gap-2">
+                      {(Object.entries(POSITIONS) as [Position, typeof POSITIONS[Position]][]).map(([key, { label, color }]) => {
+                        const sel = selectedPositions.includes(key);
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => togglePosition(key)}
+                            className={`flex-1 py-2.5 text-sm rounded-xl transition-all duration-300 cursor-pointer border font-semibold ${
+                              sel
+                                ? color === "danger"
+                                  ? "bg-gbus-danger/15 border-gbus-danger/40 text-gbus-danger shadow-[0_0_12px_rgba(255,118,117,0.15)]"
+                                  : color === "accent"
+                                    ? "bg-gbus-accent/15 border-gbus-accent/40 text-gbus-accent shadow-[0_0_12px_rgba(0,206,201,0.15)]"
+                                    : "bg-gbus-success/15 border-gbus-success/40 text-gbus-success shadow-[0_0_12px_rgba(0,184,148,0.15)]"
+                                : "border-gbus-border/40 text-gbus-text-dim hover:border-gbus-text-dim hover:text-gbus-text-muted"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedPositions.length === 0 && (
+                      <p className="text-xs text-gbus-primary-light mt-2 font-medium">올포지션으로 참여합니다</p>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <Button onClick={handleReserve} loading={reserving} disabled={selectedBarracks.length === 0} className="flex-1 btn-shine">
                     {selectedBarracks.length}개 예약
                   </Button>
-                  <Button variant="ghost" onClick={() => { setShowReservePanel(false); setSelectedBarracks([]); }}>취소</Button>
+                  <Button variant="ghost" onClick={() => { setShowReservePanel(false); setSelectedBarracks([]); setSelectedPositions([]); }}>취소</Button>
                 </div>
               </div>
             )}
@@ -331,11 +384,26 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
         <div className="glass rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold flex items-center gap-2.5">
-              <span className="w-1.5 h-4 bg-gbus-primary rounded-full" />대기열 ({reservations.length}명)
+              <span className="w-1.5 h-4 bg-gbus-primary rounded-full" />{isParty ? "참여자" : "대기열"} ({reservations.length}명)
             </h3>
             <div className="flex gap-4 text-xs font-medium">
-              <span className="text-gbus-success">완료 {doneCount}</span>
-              <span className="text-gbus-text-dim">대기 {waitingReservations.length}</span>
+              {isParty ? (
+                <>
+                  {(Object.entries(POSITIONS) as [Position, typeof POSITIONS[Position]][]).map(([key, { label }]) => {
+                    const count = reservations.filter((r) => r.positions?.includes(key)).length;
+                    return count > 0 ? <span key={key} className="text-gbus-text-muted">{label} {count}</span> : null;
+                  })}
+                  {(() => {
+                    const allPosCount = reservations.filter((r) => !r.positions || r.positions.length === 0).length;
+                    return allPosCount > 0 ? <span className="text-gbus-primary-light">올포지션 {allPosCount}</span> : null;
+                  })()}
+                </>
+              ) : (
+                <>
+                  <span className="text-gbus-success">완료 {doneCount}</span>
+                  <span className="text-gbus-text-dim">대기 {waitingReservations.length}</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -359,12 +427,19 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                         {r.char_name}
                       </button>
                       {mine && <Badge variant="primary">나</Badge>}
+                      {isParty && (r.positions && r.positions.length > 0
+                        ? r.positions.map((pos) => {
+                            const p = POSITIONS[pos as Position];
+                            return p ? <Badge key={pos} variant={p.color}>{p.label}</Badge> : null;
+                          })
+                        : <Badge variant="primary">올포지션</Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       {r.status === "called" && <Badge variant="accent">호출됨</Badge>}
                       {r.status === "done" && <Badge variant="success">완료</Badge>}
                       {r.status === "noshow" && <Badge variant="danger">노쇼</Badge>}
-                      {r.status === "waiting" && isDriver && <Button variant="ghost" size="sm" onClick={() => copyNickname(r.char_name)}>복사</Button>}
+                      {r.status === "waiting" && isDriver && !isParty && <Button variant="ghost" size="sm" onClick={() => copyNickname(r.char_name)}>복사</Button>}
                     </div>
                   </div>
                 );

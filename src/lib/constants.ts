@@ -29,6 +29,14 @@ export const DUNGEONS: DungeonConfig[] = [
   { name: "판어", partySize: 4, barrackMinCount: 0 },
 ];
 
+// 포지션 정의
+export const POSITIONS = {
+  dealer: { label: "딜러", color: "danger" as const },
+  support: { label: "유틸", color: "accent" as const },
+  healer: { label: "힐러", color: "success" as const },
+} as const;
+export type Position = keyof typeof POSITIONS;
+
 // 글 타입 라벨
 export const POST_TYPE_LABEL = {
   party: "파티 모집",
