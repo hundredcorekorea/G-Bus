@@ -24,10 +24,11 @@ export default function NewSessionPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  // 배럭 모집 시 barrackMinCount > 0인 던전만 표시
+  // 배럭: barrackMinCount > 0인 던전만, 파티/버스: 메키이(배럭 전용 묶음) 제외
+  const BARRACK_ONLY = ["메키이"];
   const availableDungeons = postType === "barrack_bus"
     ? DUNGEONS.map((d, i) => ({ ...d, idx: i })).filter((d) => d.barrackMinCount > 0)
-    : DUNGEONS.map((d, i) => ({ ...d, idx: i }));
+    : DUNGEONS.map((d, i) => ({ ...d, idx: i })).filter((d) => !BARRACK_ONLY.includes(d.name));
 
   const availableTypes: PostType[] = ["party"];
   if (profile?.verified) availableTypes.push("bus");
