@@ -54,12 +54,12 @@ export function Header() {
 
           {user ? (
             <div className="flex items-center gap-2.5 ml-3 pl-3 border-l border-gbus-border/30">
-              <span className="text-xs text-gbus-text-dim flex items-center gap-1.5">
+              <Link href="/mypage" className="text-xs text-gbus-text-dim flex items-center gap-1.5 hover:text-gbus-primary-light transition-colors">
                 <span className="font-medium text-gbus-text-muted">{profile?.game_nickname || profile?.nickname}</span>
                 {profile?.barrack_verified && (
                   <span className="status-dot status-dot-live" title="배럭 인증" />
                 )}
-              </span>
+              </Link>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 로그아웃
               </Button>
