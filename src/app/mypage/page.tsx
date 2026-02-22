@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { toast, ToastContainer } from "@/components/ui/Toast";
+import Link from "next/link";
 
 export default function MyPage() {
   const { user, profile } = useAuth();
@@ -115,6 +116,17 @@ export default function MyPage() {
             닉네임/인게임 닉네임 변경은 디스코드 재인증이 필요하여 직접 변경이 불가합니다.
           </p>
         </div>
+
+        {/* 배럭 관리 바로가기 */}
+        <Link href="/barrack">
+          <div className="glass rounded-2xl p-5 mb-4 flex items-center justify-between hover:border-gbus-primary/30 transition-all duration-300 cursor-pointer group">
+            <div>
+              <h2 className="text-sm font-semibold text-gbus-text-muted mb-1">배럭 관리</h2>
+              <p className="text-xs text-gbus-text-dim">캐릭터 닉네임과 레벨을 등록/수정합니다</p>
+            </div>
+            <span className="text-gbus-text-dim group-hover:text-gbus-primary-light transition-colors text-lg">&#x203A;</span>
+          </div>
+        </Link>
 
         {/* 비밀번호 변경 */}
         <div className="glass rounded-2xl p-6">

@@ -20,9 +20,17 @@ export function PromoCard({ placement, className = "" }: PromoCardProps) {
       .eq("placement", placement)
       .eq("active", true)
       .order("priority", { ascending: false })
-      .limit(1)
-      .single()
-      .then(({ data }) => setAd(data));
+      .then(({ data }) => {
+        if (!data || data.length === 0) return;
+        // 우선순위 가중치 랜덤: priority 높을수록 확률 높음
+        const total = data.reduce((sum, d) => sum + (d.priority || 1), 0);
+        let rand = Math.random() * total;
+        for (const d of data) {
+          rand -= d.priority || 1;
+          if (rand <= 0) { setAd(d); return; }
+        }
+        setAd(data[0]);
+      });
   }, [placement]);
 
   if (!ad) return null;
