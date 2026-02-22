@@ -12,21 +12,22 @@ export interface DungeonConfig {
   name: string;
   partySize: number;         // 파티 모집 인원
   barrackMinCount: number;   // 배럭 모집 기본 인원
+  minDigiLv: number;         // 하인 최소 레벨 (0 = 제한 없음)
 }
 
 export const DUNGEONS: DungeonConfig[] = [
-  { name: "로어", partySize: 4, barrackMinCount: 0 },
-  { name: "스던", partySize: 4, barrackMinCount: 0 },
-  { name: "메청", partySize: 4, barrackMinCount: 0 },
-  { name: "키이", partySize: 4, barrackMinCount: 0 },
-  { name: "메키이", partySize: 4, barrackMinCount: 30 },
-  { name: "키노", partySize: 4, barrackMinCount: 24 },
-  { name: "다크웹", partySize: 2, barrackMinCount: 20 },
-  { name: "네버", partySize: 4, barrackMinCount: 15 },
-  { name: "사성수노말", partySize: 4, barrackMinCount: 0 },
-  { name: "사성수어려움", partySize: 4, barrackMinCount: 0 },
-  { name: "판노", partySize: 4, barrackMinCount: 0 },
-  { name: "판어", partySize: 4, barrackMinCount: 0 },
+  { name: "로어", partySize: 4, barrackMinCount: 0, minDigiLv: 150 },
+  { name: "스던", partySize: 4, barrackMinCount: 0, minDigiLv: 150 },
+  { name: "메청", partySize: 4, barrackMinCount: 0, minDigiLv: 150 },
+  { name: "키이", partySize: 4, barrackMinCount: 0, minDigiLv: 150 },
+  { name: "메키이", partySize: 4, barrackMinCount: 30, minDigiLv: 150 },
+  { name: "키노", partySize: 4, barrackMinCount: 24, minDigiLv: 160 },
+  { name: "다크웹", partySize: 2, barrackMinCount: 20, minDigiLv: 150 },
+  { name: "네버", partySize: 4, barrackMinCount: 15, minDigiLv: 160 },
+  { name: "사성수노말", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "사성수어려움", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "판노", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "판어", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
 ];
 
 // 포지션 정의

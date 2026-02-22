@@ -60,7 +60,7 @@ export interface Reservation {
   positions: string[] | null;
   tamer_lv: number | null;
   digi_lv: number | null;
-  status: "waiting" | "called" | "done" | "noshow";
+  status: "pending" | "waiting" | "called" | "done" | "noshow";
   created_at: string;
   // joined
   user?: User;

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { toast, ToastContainer } from "@/components/ui/Toast";
 import { PromoCard } from "@/components/ads/PromoCard";
-import { QUEUE_ALERT_BEFORE, NOSHOW_PENALTY_SCORE, POST_TYPE_LABEL, POSITIONS, type Position } from "@/lib/constants";
+import { QUEUE_ALERT_BEFORE, NOSHOW_PENALTY_SCORE, POST_TYPE_LABEL, POSITIONS, DUNGEONS, type Position } from "@/lib/constants";
 import type { Barrack, Bid } from "@/lib/types";
 
 const statusLabel = { waiting: "대기 중", running: "운행 중", completed: "완료", cancelled: "취소됨" };
@@ -25,6 +25,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const [showReservePanel, setShowReservePanel] = useState(false);
   const [bids, setBids] = useState<(Bid & { driver: { nickname: string; game_nickname: string } })[]>([]);
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([]);
+  const [posFilter, setPosFilter] = useState<Position | "all">("all");
   const [bidPrice, setBidPrice] = useState("");
   const [bidMessage, setBidMessage] = useState("");
   const [bidding, setBidding] = useState(false);
@@ -38,11 +39,16 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       prev.includes(pos) ? prev.filter((p) => p !== pos) : [...prev, pos]
     );
   };
-  const waitingReservations = reservations.filter((r) => r.status === "waiting");
-  const calledReservation = reservations.find((r) => r.status === "called");
-  const doneCount = reservations.filter((r) => r.status === "done").length;
+  const activeReservations = reservations.filter((r) => r.status !== "pending");
+  const pendingReservations = reservations.filter((r) => r.status === "pending");
+  const waitingReservations = activeReservations.filter((r) => r.status === "waiting");
+  const calledReservation = activeReservations.find((r) => r.status === "called");
+  const doneCount = activeReservations.filter((r) => r.status === "done").length;
   const myReservations = reservations.filter((r) => r.user_id === user?.id);
+  const myPending = myReservations.filter((r) => r.status === "pending");
   const myNextWaiting = myReservations.find((r) => r.status === "waiting");
+  const dungeonNames = session?.dungeon_name?.split(",").map((s: string) => s.trim()) || [];
+  const minDigiLv = Math.max(0, ...dungeonNames.map((dn: string) => DUNGEONS.find((d) => d.name === dn)?.minDigiLv ?? 0));
   const currentQueueNo = calledReservation?.queue_no ?? doneCount;
   const estimatedMinutes = myNextWaiting
     ? (myNextWaiting.queue_no - currentQueueNo) * (session?.avg_round_minutes || 10) : 0;
@@ -102,12 +108,16 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       p_user_id: user!.id,
       p_char_names: selectedBarracks,
     };
-    if (isParty && selectedPositions.length > 0) {
-      rpcParams.p_positions = selectedPositions;
+    if (isParty) {
+      rpcParams.p_status = "pending";
+      if (selectedPositions.length > 0) rpcParams.p_positions = selectedPositions;
     }
     const { error } = await supabase.rpc("reserve_bulk", rpcParams);
-    if (error) toast("예약 실패: " + error.message, "error");
-    else { toast(`${selectedBarracks.length}개 캐릭터 예약 완료!`, "success"); setSelectedBarracks([]); setSelectedPositions([]); setShowReservePanel(false); }
+    if (error) toast("신청 실패: " + error.message, "error");
+    else {
+      toast(isParty ? "참여 신청 완료! 파장의 수락을 기다려 주세요." : `${selectedBarracks.length}개 캐릭터 예약 완료!`, "success");
+      setSelectedBarracks([]); setSelectedPositions([]); setShowReservePanel(false);
+    }
     setReserving(false);
   };
 
@@ -127,6 +137,32 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
   const handleSessionStatus = async (status: "running" | "completed" | "cancelled") => {
     await supabase.from("bus_sessions").update({ status, updated_at: new Date().toISOString() }).eq("id", sessionId);
+    refetch();
+  };
+
+  const handleAccept = async (reservationId: string) => {
+    const { error } = await supabase.rpc("accept_applicant", { p_reservation_id: reservationId });
+    if (error) toast("수락 실패: " + error.message, "error");
+    else toast("수락 완료!", "success");
+    refetch();
+  };
+
+  const handleReject = async (reservationId: string) => {
+    const { error } = await supabase.from("reservations").delete().eq("id", reservationId);
+    if (error) toast("거절 실패: " + error.message, "error");
+    else toast("거절 완료", "info");
+    refetch();
+  };
+
+  const handleLeave = async (reservationId: string) => {
+    const r = reservations.find((rv) => rv.id === reservationId);
+    if (!r) return;
+    const { error } = await supabase.from("reservations").delete().eq("id", reservationId);
+    if (error) { toast("탈퇴 실패: " + error.message, "error"); return; }
+    if (r.status !== "pending") {
+      await supabase.from("bus_sessions").update({ current_count: Math.max(0, (session?.current_count || 1) - 1), updated_at: new Date().toISOString() }).eq("id", sessionId);
+    }
+    toast("파티에서 탈퇴했습니다.", "info");
     refetch();
   };
 
@@ -250,11 +286,61 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
           </div>
         )}
 
+        {/* 파장: 신청자 승인 패널 */}
+        {isParty && isDriver && pendingReservations.length > 0 && (
+          <div className="glass rounded-2xl p-6 mb-5">
+            <h3 className="font-bold mb-4 flex items-center gap-2.5">
+              <span className="w-1.5 h-4 bg-gbus-warning rounded-full" />참여 신청 ({pendingReservations.length}명)
+            </h3>
+            <div className="flex gap-1.5 mb-3 flex-wrap">
+              <button onClick={() => setPosFilter("all")}
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-all cursor-pointer font-medium ${posFilter === "all" ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light" : "border-gbus-border/40 text-gbus-text-dim hover:text-gbus-text-muted"}`}>전체</button>
+              {(Object.entries(POSITIONS) as [Position, typeof POSITIONS[Position]][]).map(([key, { label }]) => (
+                <button key={key} onClick={() => setPosFilter(key)}
+                  className={`px-3 py-1.5 text-xs rounded-lg border transition-all cursor-pointer font-medium ${posFilter === key ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light" : "border-gbus-border/40 text-gbus-text-dim hover:text-gbus-text-muted"}`}>{label}</button>
+              ))}
+              <button onClick={() => setPosFilter("all" as Position | "all")}
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-all cursor-pointer font-medium ${posFilter === "all" ? "" : "border-gbus-border/40 text-gbus-text-dim hover:text-gbus-text-muted"}`}
+                style={{ display: "none" }}>reset</button>
+            </div>
+            <div className="space-y-1.5">
+              {pendingReservations
+                .filter((r) => posFilter === "all" || r.positions?.includes(posFilter) || (!r.positions?.length && posFilter))
+                .map((r) => (
+                <div key={r.id} className="flex items-center justify-between px-4 py-3 rounded-xl text-sm bg-gbus-warning/5 border border-gbus-warning/15">
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-semibold">{r.char_name}</span>
+                    {(r.tamer_lv != null || r.digi_lv != null) && (
+                      <span className="flex items-center gap-1">
+                        {r.tamer_lv != null && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gbus-success/10 text-gbus-success border border-gbus-success/30">{r.tamer_lv}</span>}
+                        {r.digi_lv != null && <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gbus-accent-light/10 text-gbus-accent-light border border-gbus-accent-light/30">{r.digi_lv}</span>}
+                      </span>
+                    )}
+                    {r.positions && r.positions.length > 0
+                      ? r.positions.map((pos) => { const p = POSITIONS[pos as Position]; return p ? <Badge key={pos} variant={p.color}>{p.label}</Badge> : null; })
+                      : <Badge variant="primary">올포지션</Badge>}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Button size="sm" onClick={() => handleAccept(r.id)}>수락</Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleReject(r.id)}>거절</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 승객 예약 */}
         {!isDriver && profile?.verified && (session.status === "waiting" || session.status === "running") && (
           <div className="glass rounded-2xl p-6 mb-5">
+            {myPending.length > 0 && (
+              <div className="bg-gbus-warning/8 border border-gbus-warning/20 rounded-xl p-4 mb-4">
+                <p className="text-sm font-semibold text-gbus-warning">참여 신청 완료 — 파장 수락 대기 중</p>
+                <p className="text-xs text-gbus-text-dim mt-1">{myPending.map((r) => r.char_name).join(", ")}</p>
+              </div>
+            )}
             {!showReservePanel ? (
-              <Button onClick={() => setShowReservePanel(true)} className="w-full btn-shine" size="lg">예약하기</Button>
+              <Button onClick={() => setShowReservePanel(true)} className="w-full btn-shine" size="lg">{isParty ? "참여 신청" : "예약하기"}</Button>
             ) : (
               <div>
                 <h3 className="font-bold mb-4 flex items-center gap-2.5">
@@ -265,18 +351,24 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                     등록된 배럭이 없습니다. <a href="/barrack" className="text-gbus-primary hover:text-gbus-primary-light transition-colors font-medium">배럭 관리</a>에서 추가하세요.
                   </p>
                 ) : (
+                  <>
+                  {minDigiLv > 0 && (
+                    <p className="text-xs text-gbus-warning mb-2 font-medium">이 던전은 하인 Lv.{minDigiLv} 이상만 입장 가능합니다</p>
+                  )}
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
                     {barracks.map((b) => {
                       const done = reservations.some((r) => r.char_name === b.char_name && r.user_id === user?.id);
+                      const lvBlocked = minDigiLv > 0 && (b.digi_lv == null || b.digi_lv < minDigiLv);
+                      const disabled = done || lvBlocked;
                       const sel = selectedBarracks.includes(b.char_name);
                       return (
-                        <button key={b.id} disabled={done} onClick={() => setSelectedBarracks((p) => sel ? p.filter((n) => n !== b.char_name) : [...p, b.char_name])}
+                        <button key={b.id} disabled={disabled} onClick={() => setSelectedBarracks((p) => sel ? p.filter((n) => n !== b.char_name) : [...p, b.char_name])}
                           className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer text-left ${
-                            done ? "bg-gbus-bg/40 border-gbus-border/20 text-gbus-text-dim cursor-not-allowed opacity-40"
+                            disabled ? "bg-gbus-bg/40 border-gbus-border/20 text-gbus-text-dim cursor-not-allowed opacity-40"
                             : sel ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light shadow-[0_0_10px_rgba(108,92,231,0.12)]"
                             : "border-gbus-border/40 text-gbus-text-muted hover:border-gbus-primary/30 hover:text-gbus-text"
                           }`}>
-                          <span>{b.char_name}{done && " (예약됨)"}</span>
+                          <span>{b.char_name}{done ? " (예약됨)" : lvBlocked ? " (레벨 부족)" : ""}</span>
                           {(b.tamer_lv != null || b.digi_lv != null) && (
                             <span className="flex items-center gap-1 mt-0.5">
                               {b.tamer_lv != null && (
@@ -295,6 +387,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                       );
                     })}
                   </div>
+                  </>
                 )}
                 {/* 포지션 선택 (파티만) */}
                 {isParty && (
@@ -333,13 +426,13 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
                 <div className="flex gap-2">
                   <Button onClick={handleReserve} loading={reserving} disabled={selectedBarracks.length === 0} className="flex-1 btn-shine">
-                    {selectedBarracks.length}개 예약
+                    {isParty ? `${selectedBarracks.length}개 참여 신청` : `${selectedBarracks.length}개 예약`}
                   </Button>
                   <Button variant="ghost" onClick={() => { setShowReservePanel(false); setSelectedBarracks([]); setSelectedPositions([]); }}>취소</Button>
                 </div>
               </div>
             )}
-            {myNextWaiting && (
+            {!isParty && myNextWaiting && (
               <div className="mt-4 bg-gbus-bg/40 rounded-xl p-4 text-sm border border-gbus-border/20">
                 <span className="text-gbus-text-dim">내 순번:</span>{" "}
                 <span className="font-bold text-gbus-primary-light">#{myNextWaiting.queue_no}</span>
@@ -398,17 +491,17 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
         <div className="glass rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold flex items-center gap-2.5">
-              <span className="w-1.5 h-4 bg-gbus-primary rounded-full" />{isParty ? "참여자" : "대기열"} ({reservations.length}명)
+              <span className="w-1.5 h-4 bg-gbus-primary rounded-full" />{isParty ? "참여자" : "대기열"} ({activeReservations.length}명)
             </h3>
             <div className="flex gap-4 text-xs font-medium">
               {isParty ? (
                 <>
                   {(Object.entries(POSITIONS) as [Position, typeof POSITIONS[Position]][]).map(([key, { label }]) => {
-                    const count = reservations.filter((r) => r.positions?.includes(key)).length;
+                    const count = activeReservations.filter((r) => r.positions?.includes(key)).length;
                     return count > 0 ? <span key={key} className="text-gbus-text-muted">{label} {count}</span> : null;
                   })}
                   {(() => {
-                    const allPosCount = reservations.filter((r) => !r.positions || r.positions.length === 0).length;
+                    const allPosCount = activeReservations.filter((r) => !r.positions || r.positions.length === 0).length;
                     return allPosCount > 0 ? <span className="text-gbus-primary-light">올포지션 {allPosCount}</span> : null;
                   })()}
                 </>
@@ -421,11 +514,11 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {reservations.length === 0 ? (
-            <div className="text-center py-12"><div className="text-4xl mb-3 opacity-15">&#x1F465;</div><p className="text-gbus-text-muted text-sm">예약이 없습니다</p></div>
+          {activeReservations.length === 0 ? (
+            <div className="text-center py-12"><div className="text-4xl mb-3 opacity-15">&#x1F465;</div><p className="text-gbus-text-muted text-sm">{isParty ? "아직 수락된 참여자가 없습니다" : "예약이 없습니다"}</p></div>
           ) : (
             <div className="space-y-1.5">
-              {reservations.map((r) => {
+              {activeReservations.map((r) => {
                 const mine = r.user_id === user?.id;
                 return (
                   <div key={r.id} className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all ${
@@ -436,7 +529,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                     : "bg-gbus-surface-light/20 border border-transparent hover:bg-gbus-surface-light/30"
                   }`}>
                     <div className="flex items-center gap-3">
-                      <span className="text-gbus-text-dim w-8 font-mono text-xs font-medium">#{r.queue_no}</span>
+                      {!isParty && <span className="text-gbus-text-dim w-8 font-mono text-xs font-medium">#{r.queue_no}</span>}
                       <button onClick={() => copyNickname(r.char_name)} className="hover:text-gbus-primary-light transition-colors cursor-pointer font-semibold" title="복사">
                         {r.char_name}
                       </button>
@@ -468,6 +561,9 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                       {r.status === "done" && <Badge variant="success">완료</Badge>}
                       {r.status === "noshow" && <Badge variant="danger">노쇼</Badge>}
                       {r.status === "waiting" && isDriver && !isParty && <Button variant="ghost" size="sm" onClick={() => copyNickname(r.char_name)}>복사</Button>}
+                      {isParty && mine && r.status === "waiting" && session?.status === "waiting" && (
+                        <Button variant="danger" size="sm" onClick={() => handleLeave(r.id)}>탈퇴</Button>
+                      )}
                     </div>
                   </div>
                 );
