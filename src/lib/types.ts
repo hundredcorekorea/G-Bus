@@ -58,6 +58,8 @@ export interface Reservation {
   char_name: string;
   queue_no: number;
   positions: string[] | null;
+  tamer_lv: number | null;
+  digi_lv: number | null;
   status: "waiting" | "called" | "done" | "noshow";
   created_at: string;
   // joined
@@ -68,6 +70,8 @@ export interface Barrack {
   id: string;
   user_id: string;
   char_name: string;
+  tamer_lv: number | null;
+  digi_lv: number | null;
   sort_order: number;
   created_at: string;
 }

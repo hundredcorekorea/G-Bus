@@ -271,12 +271,26 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                       const sel = selectedBarracks.includes(b.char_name);
                       return (
                         <button key={b.id} disabled={done} onClick={() => setSelectedBarracks((p) => sel ? p.filter((n) => n !== b.char_name) : [...p, b.char_name])}
-                          className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer ${
+                          className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer text-left ${
                             done ? "bg-gbus-bg/40 border-gbus-border/20 text-gbus-text-dim cursor-not-allowed opacity-40"
                             : sel ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light shadow-[0_0_10px_rgba(108,92,231,0.12)]"
                             : "border-gbus-border/40 text-gbus-text-muted hover:border-gbus-primary/30 hover:text-gbus-text"
                           }`}>
-                          {b.char_name}{done && " (예약됨)"}
+                          <span>{b.char_name}{done && " (예약됨)"}</span>
+                          {(b.tamer_lv != null || b.digi_lv != null) && (
+                            <span className="flex items-center gap-1.5 mt-0.5">
+                              {b.tamer_lv != null && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] text-gbus-accent">
+                                  <span className="w-1.5 h-1.5 rounded-sm bg-gbus-accent/80" />{b.tamer_lv}
+                                </span>
+                              )}
+                              {b.digi_lv != null && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] text-gbus-warning">
+                                  <span className="w-1.5 h-1.5 rounded-sm bg-gbus-warning/80" />{b.digi_lv}
+                                </span>
+                              )}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -433,6 +447,20 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                             return p ? <Badge key={pos} variant={p.color}>{p.label}</Badge> : null;
                           })
                         : <Badge variant="primary">올포지션</Badge>
+                      )}
+                      {(r.tamer_lv != null || r.digi_lv != null) && (
+                        <span className="flex items-center gap-1 ml-1">
+                          {r.tamer_lv != null && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-gbus-accent">
+                              <span className="w-1.5 h-1.5 rounded-sm bg-gbus-accent/80" />{r.tamer_lv}
+                            </span>
+                          )}
+                          {r.digi_lv != null && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-gbus-warning">
+                              <span className="w-1.5 h-1.5 rounded-sm bg-gbus-warning/80" />{r.digi_lv}
+                            </span>
+                          )}
+                        </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
