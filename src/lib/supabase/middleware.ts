@@ -41,6 +41,11 @@ export async function updateSession(request: NextRequest) {
     return redirectResponse;
   };
 
+  // 로그인된 유저가 랜딩/로그인 페이지 접근 → 대시보드로
+  if (user && (pathname === "/" || pathname === "/login")) {
+    return redirectTo("/dashboard");
+  }
+
   // 공개 경로
   const publicPaths = ["/", "/login", "/terms", "/privacy"];
   if (publicPaths.includes(pathname) || pathname.startsWith("/auth/") || pathname.startsWith("/api/")) {
