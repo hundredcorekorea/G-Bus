@@ -38,6 +38,16 @@ export const POSITIONS = {
 } as const;
 export type Position = keyof typeof POSITIONS;
 
+// 신고 카테고리
+export const REPORT_CATEGORIES = {
+  noshow: "노쇼/잠수",
+  fraud: "사기/먹튀",
+  abuse: "욕설/비매너",
+  cheat: "핵/버그 악용",
+  other: "기타",
+} as const;
+export type ReportCategory = keyof typeof REPORT_CATEGORIES;
+
 // 글 타입 라벨
 export const POST_TYPE_LABEL = {
   party: "파티 모집",

@@ -17,6 +17,7 @@ const roleLabel: Record<string, string> = {
 export default function AdminUsersPage() {
   const { profile: me } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
+  const [reportCounts, setReportCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"pending" | "all">("pending");
   const supabase = createClient();
@@ -29,6 +30,20 @@ export default function AdminUsersPage() {
       }
       const { data } = await query;
       setUsers(data || []);
+
+      // 유저별 신고 건수 조회
+      if (data && data.length > 0) {
+        const ids = data.map((u: User) => u.id);
+        const { data: reports } = await supabase
+          .from("reports")
+          .select("reported_id")
+          .in("reported_id", ids);
+        const counts: Record<string, number> = {};
+        for (const r of reports || []) {
+          counts[r.reported_id] = (counts[r.reported_id] || 0) + 1;
+        }
+        setReportCounts(counts);
+      }
     } catch {
       // 쿼리 실패 시 빈 목록 표시
     } finally {
@@ -74,6 +89,13 @@ export default function AdminUsersPage() {
       return;
     }
     toast(verified ? "배럭 인증 완료" : "배럭 인증 해제", "success");
+    fetchUsers();
+  };
+
+  const handleUnsuspend = async (userId: string) => {
+    const { error } = await supabase.from("users").update({ suspended_until: null }).eq("id", userId);
+    if (error) { toast("정지 해제 실패: " + error.message, "error"); return; }
+    toast("정지가 해제되었습니다.", "success");
     fetchUsers();
   };
 
@@ -152,6 +174,10 @@ export default function AdminUsersPage() {
                       {u.barrack_verified && <Badge variant="success">배럭 인증</Badge>}
                       {u.is_admin && <Badge variant="accent">관리자</Badge>}
                       {u.is_moderator && <Badge variant="accent">부관리자</Badge>}
+                      {(reportCounts[u.id] || 0) > 0 && <Badge variant="danger">신고 {reportCounts[u.id]}건</Badge>}
+                      {u.suspended_until && new Date(u.suspended_until) > new Date() && (
+                        <Badge variant="danger">정지 중 (~{new Date(u.suspended_until).toLocaleDateString("ko-KR")})</Badge>
+                      )}
                     </div>
                     <div className="text-sm text-gbus-text-muted">
                       인게임: <span className="text-gbus-text">{u.game_nickname}</span>
@@ -182,6 +208,12 @@ export default function AdminUsersPage() {
                         onClick={() => handleBarrackVerify(u.id, !u.barrack_verified)}
                       >
                         {u.barrack_verified ? "배럭 해제" : "배럭 인증"}
+                      </Button>
+                    )}
+                    {/* 정지 해제 */}
+                    {u.suspended_until && new Date(u.suspended_until) > new Date() && (
+                      <Button variant="secondary" size="sm" onClick={() => handleUnsuspend(u.id)}>
+                        정지 해제
                       </Button>
                     )}
                     {/* 역할 관리 (admin만 보임) */}

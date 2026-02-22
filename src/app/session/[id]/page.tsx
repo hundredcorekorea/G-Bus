@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { toast, ToastContainer } from "@/components/ui/Toast";
 import { PromoCard } from "@/components/ads/PromoCard";
+import { ReportModal } from "@/components/ui/ReportModal";
 import { QUEUE_ALERT_BEFORE, NOSHOW_PENALTY_SCORE, POST_TYPE_LABEL, POSITIONS, DUNGEONS, type Position } from "@/lib/constants";
 import type { Barrack, Bid } from "@/lib/types";
 
@@ -29,6 +30,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const [bidPrice, setBidPrice] = useState("");
   const [bidMessage, setBidMessage] = useState("");
   const [bidding, setBidding] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ userId: string; name: string } | null>(null);
   const supabase = createClient();
 
   const isDriver = session?.driver_id === user?.id;
@@ -564,6 +566,15 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                       {isParty && mine && r.status === "waiting" && session?.status === "waiting" && (
                         <Button variant="danger" size="sm" onClick={() => handleLeave(r.id)}>탈퇴</Button>
                       )}
+                      {!mine && profile?.verified && (
+                        <button
+                          onClick={() => setReportTarget({ userId: r.user_id, name: r.char_name })}
+                          className="text-gbus-text-dim hover:text-gbus-danger transition-colors text-xs cursor-pointer px-1"
+                          title="신고"
+                        >
+                          &#x26A0;
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -574,6 +585,16 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
         <PromoCard placement="waiting" className="mt-6" />
       </main>
+
+      {reportTarget && user && (
+        <ReportModal
+          targetName={reportTarget.name}
+          targetUserId={reportTarget.userId}
+          reporterId={user.id}
+          sessionId={sessionId}
+          onClose={() => setReportTarget(null)}
+        />
+      )}
     </div>
   );
 }

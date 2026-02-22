@@ -10,6 +10,7 @@ export interface User {
   honor_score: number;
   noshow_count: number;
   hc_account_id: string | null;
+  suspended_until: string | null;
   created_at: string;
 }
 
@@ -99,6 +100,22 @@ export interface DriverRating {
   safety_score: number;
   comment: string | null;
   created_at: string;
+}
+
+export interface Report {
+  id: string;
+  reporter_id: string;
+  reported_id: string;
+  session_id: string | null;
+  category: string;
+  reason: string;
+  status: "pending" | "reviewed" | "warned" | "actioned" | "dismissed";
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  // joined
+  reporter?: User;
+  reported?: User;
 }
 
 // Hundred Core 통합 인증
