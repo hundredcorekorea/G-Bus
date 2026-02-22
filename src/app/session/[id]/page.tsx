@@ -285,7 +285,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                                 </span>
                               )}
                               {b.digi_lv != null && (
-                                <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-warning/10 text-gbus-warning border border-gbus-warning/30">
+                                <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-accent-light/10 text-gbus-accent-light border border-gbus-accent-light/30">
                                   {b.digi_lv}
                                 </span>
                               )}
@@ -456,7 +456,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                             </span>
                           )}
                           {r.digi_lv != null && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gbus-warning/10 text-gbus-warning border border-gbus-warning/30">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gbus-accent-light/10 text-gbus-accent-light border border-gbus-accent-light/30">
                               {r.digi_lv}
                             </span>
                           )}

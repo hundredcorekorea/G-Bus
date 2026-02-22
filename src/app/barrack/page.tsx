@@ -126,7 +126,7 @@ export default function BarrackPage() {
         </p>
         <div className="flex items-center gap-3 text-[11px] text-gbus-text-dim mb-6">
           <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gbus-success/80" />주인 레벨</span>
-          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gbus-warning/70" />하인 레벨</span>
+          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gbus-accent-light/70" />하인 레벨</span>
         </div>
 
         {/* 추가 */}
@@ -248,7 +248,7 @@ export default function BarrackPage() {
                             </span>
                           )}
                           {b.digi_lv != null && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gbus-warning/10 text-gbus-warning border border-gbus-warning/30">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gbus-accent-light/10 text-gbus-accent-light border border-gbus-accent-light/30">
                               {b.digi_lv}
                             </span>
                           )}
