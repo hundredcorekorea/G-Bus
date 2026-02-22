@@ -20,7 +20,10 @@ export async function GET(request: Request) {
           setAll(cookiesToSet) {
             try {
               cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
+                cookieStore.set(name, value, {
+                  ...options,
+                  httpOnly: false,
+                })
               );
             } catch {
               // Server Component에서 호출 시 무시

@@ -18,7 +18,10 @@ export async function updateSession(request: NextRequest) {
         );
         supabaseResponse = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options)
+          supabaseResponse.cookies.set(name, value, {
+            ...options,
+            httpOnly: false, // 클라이언트 JS에서 document.cookie로 읽을 수 있어야 함
+          })
         );
       },
     },
