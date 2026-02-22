@@ -51,6 +51,7 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
+        console.log("[G-BUS] auth event:", event, "hasSession:", !!session);
         const currentUser = session?.user ?? null;
         setUser(currentUser);
 

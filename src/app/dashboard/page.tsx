@@ -39,7 +39,8 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: authErr } = await supabase.auth.getUser();
+        if (authErr) console.warn("[G-BUS] auth.getUser error:", authErr.message);
 
         const [sessionsRes, reservationsRes] = await Promise.all([
           supabase
@@ -57,16 +58,20 @@ export default function DashboardPage() {
             : Promise.resolve({ data: [] }),
         ]);
 
+        if (sessionsRes.error) console.warn("[G-BUS] sessions query error:", sessionsRes.error.message);
+
         setSessions((sessionsRes.data as (BusSession & { driver: User })[]) || []);
         setMyReservations((reservationsRes.data as (Reservation & { bus_session: BusSession })[]) || []);
-      } catch {
-        // 쿼리 실패 시 빈 상태로 표시
+      } catch (err) {
+        console.error("[G-BUS] fetchData error:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    // 타임아웃 - 10초 후에도 로딩 중이면 강제 해제
+    const timeout = setTimeout(() => setLoading(false), 10000);
+    fetchData().finally(() => clearTimeout(timeout));
 
     const channel = supabase
       .channel("dashboard-sessions")
@@ -75,7 +80,10 @@ export default function DashboardPage() {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
