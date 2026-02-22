@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/hooks/useAuth";
 import { Header } from "@/components/layout/Header";
 import { ToastContainer } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
@@ -31,6 +32,7 @@ const postTypeVariant: Record<PostType, "default" | "accent" | "success"> = {
 };
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState<(BusSession & { driver: User })[]>([]);
   const [myReservations, setMyReservations] = useState<(Reservation & { bus_session: BusSession })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,9 +41,6 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: { user }, error: authErr } = await supabase.auth.getUser();
-        if (authErr) console.warn("[G-BUS] auth.getUser error:", authErr.message);
-
         const [sessionsRes, reservationsRes] = await Promise.all([
           supabase
             .from("bus_sessions")
@@ -58,8 +57,6 @@ export default function DashboardPage() {
             : Promise.resolve({ data: [] }),
         ]);
 
-        if (sessionsRes.error) console.warn("[G-BUS] sessions query error:", sessionsRes.error.message);
-
         setSessions((sessionsRes.data as (BusSession & { driver: User })[]) || []);
         setMyReservations((reservationsRes.data as (Reservation & { bus_session: BusSession })[]) || []);
       } catch (err) {
@@ -69,9 +66,7 @@ export default function DashboardPage() {
       }
     };
 
-    // 타임아웃 - 10초 후에도 로딩 중이면 강제 해제
-    const timeout = setTimeout(() => setLoading(false), 10000);
-    fetchData().finally(() => clearTimeout(timeout));
+    fetchData();
 
     const channel = supabase
       .channel("dashboard-sessions")
@@ -81,10 +76,9 @@ export default function DashboardPage() {
       .subscribe();
 
     return () => {
-      clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user]); // user 변경 시 재조회 // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen">

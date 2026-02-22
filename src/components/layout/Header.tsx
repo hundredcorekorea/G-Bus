@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 
 export function Header() {
-  const { user, profile } = useAuth();
+  const { user, profile, loading } = useAuth();
   const router = useRouter();
   const supabase = createClient();
 
@@ -16,10 +16,12 @@ export function Header() {
     router.push("/login");
   };
 
+  const isLoggedIn = user && profile?.verified;
+
   return (
     <header className="sticky top-0 z-40 glass border-b border-gbus-border/30">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href={profile?.verified ? "/dashboard" : "/"} className="flex items-center gap-2.5 group">
+        <Link href={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2.5 group">
           <div className="w-7 h-7 rounded-lg bg-gbus-primary/15 border border-gbus-primary/25 flex items-center justify-center">
             <span className="text-xs font-black gradient-text">G</span>
           </div>
@@ -27,7 +29,12 @@ export function Header() {
         </Link>
 
         <nav className="flex items-center gap-0.5">
-          {user && profile?.verified && (
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-16 h-6 rounded shimmer" />
+              <div className="w-12 h-6 rounded shimmer" />
+            </div>
+          ) : isLoggedIn ? (
             <>
               <Link
                 href="/dashboard"
@@ -49,21 +56,18 @@ export function Header() {
                   관리
                 </Link>
               )}
+              <div className="flex items-center gap-2.5 ml-3 pl-3 border-l border-gbus-border/30">
+                <Link href="/mypage" className="text-xs text-gbus-text-dim flex items-center gap-1.5 hover:text-gbus-primary-light transition-colors">
+                  <span className="font-medium text-gbus-text-muted">{profile.game_nickname || profile.nickname}</span>
+                  {profile.barrack_verified && (
+                    <span className="status-dot status-dot-live" title="배럭 인증" />
+                  )}
+                </Link>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  로그아웃
+                </Button>
+              </div>
             </>
-          )}
-
-          {user ? (
-            <div className="flex items-center gap-2.5 ml-3 pl-3 border-l border-gbus-border/30">
-              <Link href="/mypage" className="text-xs text-gbus-text-dim flex items-center gap-1.5 hover:text-gbus-primary-light transition-colors">
-                <span className="font-medium text-gbus-text-muted">{profile?.game_nickname || profile?.nickname}</span>
-                {profile?.barrack_verified && (
-                  <span className="status-dot status-dot-live" title="배럭 인증" />
-                )}
-              </Link>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                로그아웃
-              </Button>
-            </div>
           ) : (
             <Link href="/login">
               <Button size="sm">로그인</Button>
