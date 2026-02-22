@@ -1,0 +1,25 @@
+{
+  "name": "G-BUS - 가장 빠른 게이머 수송 작전",
+  "short_name": "G-BUS",
+  "description": "대규모 회차 던전 버스 대기열 관리 시스템",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#080b12",
+  "theme_color": "#6c5ce7",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

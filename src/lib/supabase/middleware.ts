@@ -43,7 +43,7 @@ export async function updateSession(request: NextRequest) {
 
   // 공개 경로
   const publicPaths = ["/", "/login", "/terms", "/privacy"];
-  if (publicPaths.includes(pathname)) {
+  if (publicPaths.includes(pathname) || pathname.startsWith("/auth/")) {
     return supabaseResponse;
   }
 
@@ -58,6 +58,11 @@ export async function updateSession(request: NextRequest) {
     .select("verified, is_admin, is_moderator")
     .eq("id", user.id)
     .single();
+
+  // 프로필 완성 페이지는 항상 허용 (OAuth 유저용)
+  if (pathname === "/complete-profile") {
+    return supabaseResponse;
+  }
 
   // 프로필 없으면 pending으로
   if (!profile) {
