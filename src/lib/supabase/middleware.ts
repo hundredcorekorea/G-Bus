@@ -50,7 +50,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 공개 경로
-  const publicPaths = ["/", "/login", "/terms", "/privacy"];
+  const publicPaths = ["/", "/login", "/terms", "/privacy", "/debug"];
   if (publicPaths.includes(pathname) || pathname.startsWith("/auth/") || pathname.startsWith("/api/")) {
     return supabaseResponse;
   }
