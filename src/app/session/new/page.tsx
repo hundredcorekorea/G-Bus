@@ -33,14 +33,20 @@ export default function NewSessionPage() {
   if (profile?.verified) availableTypes.push("bus");
   if (profile?.barrack_verified) availableTypes.push("barrack_bus");
 
-  const toggleDungeon = (idx: number) => {
-    setSelectedDungeons((prev) => {
-      if (prev.includes(idx)) {
-        if (prev.length === 1) return prev; // 최소 1개 유지
-        return prev.filter((i) => i !== idx);
-      }
-      return [...prev, idx];
-    });
+  const isMultiSelect = postType !== "barrack_bus";
+
+  const selectDungeon = (idx: number) => {
+    if (isMultiSelect) {
+      setSelectedDungeons((prev) => {
+        if (prev.includes(idx)) {
+          if (prev.length === 1) return prev; // 최소 1개 유지
+          return prev.filter((i) => i !== idx);
+        }
+        return [...prev, idx];
+      });
+    } else {
+      setSelectedDungeons([idx]); // 배럭: 단일 선택
+    }
   };
 
   const handlePostTypeChange = (type: PostType) => {
@@ -177,19 +183,19 @@ export default function NewSessionPage() {
               )}
             </div>
 
-            {/* 던전 선택 (다중) */}
+            {/* 던전 선택 */}
             <div>
               <label className="text-sm font-semibold text-gbus-text-muted block mb-2.5">
-                던전 <span className="text-gbus-primary-light">({selectedDungeons.length}개 선택)</span>
+                던전 {isMultiSelect && <span className="text-gbus-primary-light">({selectedDungeons.length}개 선택)</span>}
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`grid gap-2 ${postType === "barrack_bus" ? "grid-cols-2" : "grid-cols-3"}`}>
                 {availableDungeons.map((d) => {
                   const selected = selectedDungeons.includes(d.idx);
                   return (
                     <button
                       key={d.name}
                       type="button"
-                      onClick={() => toggleDungeon(d.idx)}
+                      onClick={() => selectDungeon(d.idx)}
                       className={`py-2.5 px-3 text-sm rounded-xl transition-all duration-300 cursor-pointer border text-center ${
                         selected
                           ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-text shadow-[0_0_12px_rgba(108,92,231,0.12)]"
