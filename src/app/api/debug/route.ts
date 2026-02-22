@@ -6,8 +6,8 @@ export async function GET() {
   const results: Record<string, unknown> = {};
 
   // 1. 환경변수 체크
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "MISSING";
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "MISSING";
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "MISSING").trim();
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "MISSING").trim();
   results.envCheck = {
     url: url.substring(0, 30) + "...",
     keyPrefix: key.substring(0, 20) + "...",
