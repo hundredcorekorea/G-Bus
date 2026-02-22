@@ -77,6 +77,7 @@ export interface AdEntry {
   title: string;
   description: string;
   img_url: string | null;
+  banner_url: string | null;
   link: string;
   placement: "waiting" | "settlement" | "notification";
   priority: number;

@@ -140,10 +140,11 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : sessions.length === 0 ? (
-            <div className="glass rounded-2xl text-center py-20">
+            <div className="glass rounded-2xl text-center py-16">
               <div className="text-5xl mb-4 opacity-20">&#x1F68C;</div>
               <p className="text-gbus-text-muted font-medium">현재 모집 중인 글이 없습니다</p>
               <p className="text-xs text-gbus-text-dim mt-1">새로운 글을 작성해 보세요</p>
+              <PromoCard placement="waiting" className="mt-8" />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -18,6 +18,7 @@ export default function AdminAdsPage() {
     title: "",
     description: "",
     img_url: "",
+    banner_url: "",
     link: "",
     placement: "waiting" as AdEntry["placement"],
     priority: 0,
@@ -40,11 +41,12 @@ export default function AdminAdsPage() {
     const { error } = await supabase.from("ads_manager").insert({
       ...form,
       img_url: form.img_url || null,
+      banner_url: form.banner_url || null,
     });
     if (error) { toast("생성 실패: " + error.message, "error"); return; }
     toast("광고가 생성되었습니다.", "success");
     setShowForm(false);
-    setForm({ app_name: "", title: "", description: "", img_url: "", link: "", placement: "waiting", priority: 0 });
+    setForm({ app_name: "", title: "", description: "", img_url: "", banner_url: "", link: "", placement: "waiting", priority: 0 });
     fetchAds();
   };
 
@@ -78,7 +80,8 @@ export default function AdminAdsPage() {
             <Input label="앱 이름" value={form.app_name} onChange={(e) => setForm({ ...form, app_name: e.target.value })} required />
             <Input label="제목" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
             <Input label="설명" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="col-span-2" required />
-            <Input label="이미지 URL (선택)" value={form.img_url} onChange={(e) => setForm({ ...form, img_url: e.target.value })} />
+            <Input label="아이콘 URL (선택)" value={form.img_url} onChange={(e) => setForm({ ...form, img_url: e.target.value })} />
+            <Input label="배너 이미지 URL (선택)" value={form.banner_url} onChange={(e) => setForm({ ...form, banner_url: e.target.value })} />
             <Input label="링크" value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })} required />
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gbus-text-muted">위치</label>
@@ -104,25 +107,36 @@ export default function AdminAdsPage() {
         ) : (
           <div className="space-y-3">
             {ads.map((ad) => (
-              <div key={ad.id} className="bg-gbus-surface border border-gbus-border rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">{ad.app_name}</span>
-                    <Badge variant={ad.active ? "success" : "default"}>
-                      {ad.active ? "활성" : "비활성"}
-                    </Badge>
-                    <Badge>{placementLabel[ad.placement]}</Badge>
+              <div key={ad.id} className="bg-gbus-surface border border-gbus-border rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      {ad.img_url && (
+                        <img src={ad.img_url} alt={ad.app_name} className="w-6 h-6 rounded-md" />
+                      )}
+                      <span className="font-medium">{ad.app_name}</span>
+                      <Badge variant={ad.active ? "success" : "default"}>
+                        {ad.active ? "활성" : "비활성"}
+                      </Badge>
+                      <Badge>{placementLabel[ad.placement]}</Badge>
+                      {ad.banner_url && <Badge variant="info">배너</Badge>}
+                    </div>
+                    <p className="text-sm text-gbus-text-muted">{ad.title}</p>
                   </div>
-                  <p className="text-sm text-gbus-text-muted">{ad.title}</p>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => handleToggle(ad.id, ad.active)}>
+                      {ad.active ? "비활성" : "활성"}
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(ad.id)}>
+                      삭제
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => handleToggle(ad.id, ad.active)}>
-                    {ad.active ? "비활성" : "활성"}
-                  </Button>
-                  <Button variant="danger" size="sm" onClick={() => handleDelete(ad.id)}>
-                    삭제
-                  </Button>
-                </div>
+                {ad.banner_url && (
+                  <div className="mt-2 rounded-lg overflow-hidden">
+                    <img src={ad.banner_url} alt="배너 미리보기" className="w-full h-24 object-cover opacity-70" />
+                  </div>
+                )}
               </div>
             ))}
           </div>

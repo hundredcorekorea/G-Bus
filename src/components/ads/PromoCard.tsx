@@ -27,12 +27,39 @@ export function PromoCard({ placement, className = "" }: PromoCardProps) {
 
   if (!ad) return null;
 
+  if (ad.banner_url) {
+    return (
+      <a
+        href={ad.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`block max-w-md mx-auto glass rounded-2xl overflow-hidden hover:border-gbus-primary/30 transition-all duration-300 border-glow group ${className}`}
+      >
+        <div className="relative overflow-hidden">
+          <img
+            src={ad.banner_url}
+            alt={ad.title}
+            className="w-full h-auto object-cover group-hover:scale-[1.03] transition-transform duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[11px] text-white/90 font-semibold">{ad.app_name}</span>
+              <span className="text-[8px] text-white/40 bg-white/10 px-1 py-px rounded-full font-medium uppercase tracking-wider">ad</span>
+            </div>
+            <p className="text-xs font-bold text-white leading-tight">{ad.title}</p>
+          </div>
+        </div>
+      </a>
+    );
+  }
+
   return (
     <a
       href={ad.link}
       target="_blank"
       rel="noopener noreferrer"
-      className={`block glass rounded-2xl p-4 hover:border-gbus-primary/30 transition-all duration-300 border-glow ${className}`}
+      className={`block max-w-md mx-auto glass rounded-2xl p-4 hover:border-gbus-primary/30 transition-all duration-300 border-glow ${className}`}
     >
       <div className="flex items-center gap-3">
         {ad.img_url && (
