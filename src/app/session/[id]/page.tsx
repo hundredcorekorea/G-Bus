@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { toast, ToastContainer } from "@/components/ui/Toast";
 import { PromoCard } from "@/components/ads/PromoCard";
 import { ReportModal } from "@/components/ui/ReportModal";
-import { QUEUE_ALERT_BEFORE, NOSHOW_PENALTY_SCORE, POST_TYPE_LABEL, POSITIONS, DUNGEONS, type Position } from "@/lib/constants";
+import { QUEUE_ALERT_BEFORE, NOSHOW_PENALTY_SCORE, POST_TYPE_LABEL, POSITIONS, DUNGEONS, getAnonymousName, type Position } from "@/lib/constants";
 import type { Barrack, Bid } from "@/lib/types";
 
 const statusLabel = { waiting: "대기 중", running: "운행 중", completed: "완료", cancelled: "취소됨" };
@@ -460,7 +460,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                     : "bg-gbus-surface-light/30 border border-gbus-border/20"
                   }`}>
                     <div>
-                      <span className="font-semibold">{b.driver?.game_nickname || b.driver?.nickname}</span>
+                      <span className="font-semibold">{session.status === "waiting" ? getAnonymousName(b.id) : (b.driver?.game_nickname || b.driver?.nickname)}</span>
                       <span className="text-gbus-accent font-black ml-2">{b.price_t}T</span>
                       {b.message && <span className="text-gbus-text-dim ml-2 text-xs">- {b.message}</span>}
                     </div>

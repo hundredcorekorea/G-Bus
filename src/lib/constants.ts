@@ -28,6 +28,14 @@ export const DUNGEONS: DungeonConfig[] = [
   { name: "사성수어려움", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
   { name: "판노", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
   { name: "판어", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  // 경험치팟
+  { name: "아포", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "파드", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "카영레", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  // 필드/기타
+  { name: "필드파티", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "프론티어", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "카이저의영역", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
 ];
 
 // 포지션 정의
@@ -54,3 +62,28 @@ export const POST_TYPE_LABEL = {
   bus: "승객 모집",
   barrack_bus: "배럭 모집",
 } as const;
+
+// 익명 기사 별명 (세션 ID 기반 결정적 선택)
+const ANON_ADJECTIVES = [
+  "부끄러워하는", "졸린", "신나는", "배고픈", "용감한",
+  "수줍은", "느긋한", "씩씩한", "장난꾸러기", "멋쟁이",
+  "귀여운", "당당한", "조용한", "활발한", "든든한",
+  "재빠른", "점잖은", "엉뚱한", "다정한", "호기심많은",
+] as const;
+const ANON_ANIMALS = [
+  "라이언", "판다", "펭귄", "고양이", "강아지",
+  "토끼", "여우", "곰", "다람쥐", "부엉이",
+  "코알라", "수달", "햄스터", "사슴", "돌고래",
+  "알파카", "치타", "거북이", "앵무새", "해달",
+] as const;
+
+/** 세션 ID 기반 결정적 익명 별명 생성 (같은 세션은 항상 같은 별명) */
+export function getAnonymousName(sessionId: string): string {
+  let hash = 0;
+  for (let i = 0; i < sessionId.length; i++) {
+    hash = ((hash << 5) - hash + sessionId.charCodeAt(i)) | 0;
+  }
+  const adj = ANON_ADJECTIVES[Math.abs(hash) % ANON_ADJECTIVES.length];
+  const animal = ANON_ANIMALS[Math.abs(hash >> 8) % ANON_ANIMALS.length];
+  return `${adj} ${animal}`;
+}

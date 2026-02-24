@@ -8,7 +8,7 @@ import { ToastContainer } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { PromoCard } from "@/components/ads/PromoCard";
-import { POST_TYPE_LABEL } from "@/lib/constants";
+import { POST_TYPE_LABEL, getAnonymousName } from "@/lib/constants";
 import Link from "next/link";
 import type { BusSession, User, Reservation, PostType } from "@/lib/types";
 
@@ -52,13 +52,15 @@ export default function DashboardPage() {
                 .from("reservations")
                 .select("*, bus_session:bus_sessions(*)")
                 .eq("user_id", user.id)
-                .in("status", ["waiting", "called"])
+                .in("status", ["waiting", "called", "pending"])
                 .order("created_at", { ascending: false })
             : Promise.resolve({ data: [] }),
         ]);
 
         setSessions((sessionsRes.data as (BusSession & { driver: User })[]) || []);
-        setMyReservations((reservationsRes.data as (Reservation & { bus_session: BusSession })[]) || []);
+        // 세션이 취소/완료된 예약은 제외
+        const allRes = (reservationsRes.data as (Reservation & { bus_session: BusSession })[]) || [];
+        setMyReservations(allRes.filter((r) => r.bus_session && ["waiting", "running"].includes(r.bus_session.status)));
       } catch (err) {
         console.error("[G-BUS] fetchData error:", err);
       } finally {
@@ -71,6 +73,9 @@ export default function DashboardPage() {
     const channel = supabase
       .channel("dashboard-sessions")
       .on("postgres_changes", { event: "*", schema: "public", table: "bus_sessions" }, () => {
+        fetchData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, () => {
         fetchData();
       })
       .subscribe();
@@ -98,9 +103,15 @@ export default function DashboardPage() {
                   <div className="glass rounded-2xl p-4 transition-all duration-300 hover:-translate-y-1 hover:border-gbus-accent/30 hover:shadow-[0_8px_32px_rgba(0,206,201,0.08)] cursor-pointer border-glow">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gbus-accent/10 border border-gbus-accent/20 flex items-center justify-center text-sm font-bold text-gbus-accent">
-                          #{r.queue_no}
-                        </div>
+                        {r.status === "pending" ? (
+                          <div className="w-10 h-10 rounded-xl bg-gbus-warning/10 border border-gbus-warning/20 flex items-center justify-center text-lg">
+                            ⏳
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-gbus-accent/10 border border-gbus-accent/20 flex items-center justify-center text-sm font-bold text-gbus-accent">
+                            #{r.queue_no}
+                          </div>
+                        )}
                         <div>
                           <span className="font-semibold">{r.char_name}</span>
                           {r.bus_session && (
@@ -110,8 +121,8 @@ export default function DashboardPage() {
                           )}
                         </div>
                       </div>
-                      <Badge variant={r.status === "called" ? "accent" : "default"}>
-                        {r.status === "called" ? "호출됨!" : "대기 중"}
+                      <Badge variant={r.status === "called" ? "accent" : r.status === "pending" ? "warning" : "default"}>
+                        {r.status === "called" ? "호출됨!" : r.status === "pending" ? "수락 대기" : "대기 중"}
                       </Badge>
                     </div>
                   </div>
@@ -174,7 +185,9 @@ export default function DashboardPage() {
                     {/* 기사 + 인원 */}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gbus-text-dim">
-                        {s.post_type === "party" ? "파장" : "기사"}: <span className="text-gbus-text-muted">{s.driver?.game_nickname || s.driver?.nickname || "?"}</span>
+                        {s.post_type === "party" ? "파장" : "기사"}: <span className="text-gbus-text-muted">
+                          {s.status === "waiting" ? getAnonymousName(s.id) : (s.driver?.game_nickname || s.driver?.nickname || "?")}
+                        </span>
                       </span>
                       {s.post_type === "party" ? (
                         <span className="text-gbus-text-muted font-medium">
