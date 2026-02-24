@@ -138,6 +138,7 @@ export default function HomePage() {
         <span className="opacity-60">G-BUS &copy; 2026</span>
         <span className="mx-2 opacity-30">|</span>
         <span className="opacity-60">Powered by Hundred Core</span>
+        <p className="text-[10px] text-gbus-text-dim/40 mt-2">이 서비스는 비공식 팬 커뮤니티 도구이며, 게임 개발사 및 퍼블리셔와 무관합니다.</p>
       </footer>
     </div>
   );
