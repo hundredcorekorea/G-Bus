@@ -5,6 +5,11 @@ export interface User {
   profile_screenshot_url: string | null;
   verified: boolean;
   barrack_verified: boolean;
+  upper_dungeon_verified: boolean;
+  upper_field_verified: boolean;
+  driver_verified: boolean;
+  tamer_lv: number;
+  digi_lv: number;
   is_admin: boolean;
   is_moderator: boolean;
   honor_score: number;
@@ -14,13 +19,14 @@ export interface User {
   created_at: string;
 }
 
-export type PostType = "party" | "bus" | "barrack_bus";
+export type PostType = "party" | "bus" | "barrack_bus" | "field_party" | "exp_party" | "mass_bus";
 
 export type PriceType = "fixed" | "auction";
 
 export interface BusSession {
   id: string;
   driver_id: string;
+  host_user_id: string | null;
   title: string;
   dungeon_name: string;
   post_type: PostType;
@@ -37,7 +43,19 @@ export interface BusSession {
   updated_at: string;
   // joined
   driver?: User;
+  host?: User;
   bids?: Bid[];
+}
+
+export interface DriverApplication {
+  id: string;
+  session_id: string;
+  driver_id: string;
+  message: string | null;
+  status: "pending" | "accepted" | "rejected";
+  created_at: string;
+  // joined
+  driver?: User;
 }
 
 export interface Bid {
@@ -116,6 +134,55 @@ export interface Report {
   // joined
   reporter?: User;
   reported?: User;
+}
+
+export interface SessionDriver {
+  id: string;
+  session_id: string;
+  user_id: string;
+  role: "main" | "sub";
+  created_at: string;
+  // joined
+  user?: User;
+}
+
+export interface NicknameChangeRequest {
+  id: string;
+  user_id: string;
+  old_nickname: string;
+  new_nickname: string;
+  field: "nickname" | "game_nickname";
+  status: "pending" | "approved" | "rejected";
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  // joined
+  user?: User;
+}
+
+export interface FieldIncomeRecord {
+  id: string;
+  user_id: string;
+  dungeon_name: string;
+  earned_t: number;
+  start_t: number | null;
+  end_t: number | null;
+  memo: string | null;
+  recorded_date: string;
+  created_at: string;
+}
+
+export interface DriverCustomer {
+  id: string;
+  driver_id: string;
+  customer_id: string;
+  nickname: string;
+  note: string | null;
+  rating: number | null;
+  session_count: number;
+  last_session_at: string | null;
+  created_at: string;
+  customer?: User;
 }
 
 // Hundred Core 통합 인증

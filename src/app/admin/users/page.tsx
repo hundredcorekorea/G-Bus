@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { toast, ToastContainer } from "@/components/ui/Toast";
 import { REPORT_CATEGORIES, type ReportCategory } from "@/lib/constants";
 import type { User, Report } from "@/lib/types";
+import { AdminTabs } from "@/components/admin/AdminTabs";
 
 const roleLabel: Record<string, string> = {
   admin: "관리자",
@@ -103,16 +104,16 @@ export default function AdminUsersPage() {
     fetchUsers();
   };
 
-  const handleBarrackVerify = async (userId: string, verified: boolean) => {
+  const handleToggleVerify = async (userId: string, field: string, currentValue: boolean, label: string) => {
     const { error } = await supabase
       .from("users")
-      .update({ barrack_verified: verified })
+      .update({ [field]: !currentValue })
       .eq("id", userId);
     if (error) {
-      toast("배럭 인증 변경 실패: " + error.message, "error");
+      toast(`${label} 변경 실패: ` + error.message, "error");
       return;
     }
-    toast(verified ? "배럭 인증 완료" : "배럭 인증 해제", "success");
+    toast(!currentValue ? `${label} 완료` : `${label} 해제`, "success");
     fetchUsers();
   };
 
@@ -194,6 +195,8 @@ export default function AdminUsersPage() {
       <ToastContainer />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        <AdminTabs />
+
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">유저 관리</h1>
           <div className="flex gap-2">
@@ -242,7 +245,10 @@ export default function AdminUsersPage() {
                         ) : (
                           <Badge variant="warning">대기 중</Badge>
                         )}
-                        {u.barrack_verified && <Badge variant="success">배럭 인증</Badge>}
+                        {u.barrack_verified && <Badge variant="success">배럭</Badge>}
+                        {u.upper_dungeon_verified && <Badge variant="success">상위던전</Badge>}
+                        {u.upper_field_verified && <Badge variant="success">상위지역</Badge>}
+                        {u.driver_verified && <Badge variant="success">기사</Badge>}
                         {u.is_admin && <Badge variant="accent">관리자</Badge>}
                         {u.is_moderator && <Badge variant="accent">부관리자</Badge>}
                         {rs.confirmed > 0 && <Badge variant="danger">제재 {rs.confirmed}건</Badge>}
@@ -273,15 +279,38 @@ export default function AdminUsersPage() {
                           </Button>
                         </div>
                       )}
-                      {/* 배럭 인증 토글 (승인된 유저만) */}
+                      {/* 인증 토글 (승인된 유저만) */}
                       {u.verified && (
-                        <Button
-                          variant={u.barrack_verified ? "danger" : "secondary"}
-                          size="sm"
-                          onClick={() => handleBarrackVerify(u.id, !u.barrack_verified)}
-                        >
-                          {u.barrack_verified ? "배럭 해제" : "배럭 인증"}
-                        </Button>
+                        <div className="flex flex-wrap gap-1">
+                          <Button
+                            variant={u.barrack_verified ? "danger" : "secondary"}
+                            size="sm"
+                            onClick={() => handleToggleVerify(u.id, "barrack_verified", u.barrack_verified, "배럭 인증")}
+                          >
+                            {u.barrack_verified ? "배럭✕" : "배럭"}
+                          </Button>
+                          <Button
+                            variant={u.upper_dungeon_verified ? "danger" : "secondary"}
+                            size="sm"
+                            onClick={() => handleToggleVerify(u.id, "upper_dungeon_verified", u.upper_dungeon_verified, "상위던전 인증")}
+                          >
+                            {u.upper_dungeon_verified ? "상던✕" : "상던"}
+                          </Button>
+                          <Button
+                            variant={u.upper_field_verified ? "danger" : "secondary"}
+                            size="sm"
+                            onClick={() => handleToggleVerify(u.id, "upper_field_verified", u.upper_field_verified, "상위지역 인증")}
+                          >
+                            {u.upper_field_verified ? "상지✕" : "상지"}
+                          </Button>
+                          <Button
+                            variant={u.driver_verified ? "danger" : "secondary"}
+                            size="sm"
+                            onClick={() => handleToggleVerify(u.id, "driver_verified", u.driver_verified, "기사 인증")}
+                          >
+                            {u.driver_verified ? "기사✕" : "기사"}
+                          </Button>
+                        </div>
                       )}
                       {/* 정지 해제 */}
                       {u.suspended_until && new Date(u.suspended_until) > new Date() && (

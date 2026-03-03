@@ -16,6 +16,7 @@ export interface DungeonConfig {
 }
 
 export const DUNGEONS: DungeonConfig[] = [
+  // 던전
   { name: "로어", partySize: 4, barrackMinCount: 0, minDigiLv: 150 },
   { name: "스던", partySize: 4, barrackMinCount: 0, minDigiLv: 150 },
   { name: "메청", partySize: 4, barrackMinCount: 0, minDigiLv: 150 },
@@ -28,14 +29,40 @@ export const DUNGEONS: DungeonConfig[] = [
   { name: "사성수어려움", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
   { name: "판노", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
   { name: "판어", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  // 필드
+  { name: "신주쿠동부(D-리퍼)", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "카이저의영역", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "디지털월드", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "산들바람", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+  { name: "바람공장", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
   // 경험치팟
   { name: "아포", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
   { name: "파드", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
   { name: "카영레", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
-  // 필드/기타
-  { name: "필드파티", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
-  { name: "프론티어", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
-  { name: "카이저의영역", partySize: 4, barrackMinCount: 0, minDigiLv: 0 },
+];
+
+// 게시판 카테고리 정의
+export const DUNGEON_NAMES = ["로어", "스던", "메청", "키이", "키노", "다크웹", "네버", "사성수노말", "사성수어려움", "판노", "판어"] as const;
+export const FIELD_NAMES = ["신주쿠동부(D-리퍼)", "카이저의영역", "디지털월드", "산들바람", "바람공장"] as const;
+export const EXP_NAMES = ["아포", "파드", "카영레"] as const;
+export const MASS_BUS_NAMES = ["메키이", "키노", "다크웹", "네버"] as const;
+export const INCOME_REGIONS = ["카이저의영역", "디지털월드", "산들바람", "바람공장"] as const;
+
+export type BoardType = "party" | "bus" | "field" | "exp" | "mass_bus";
+
+export interface BoardConfig {
+  key: BoardType;
+  label: string;
+  dungeons: readonly string[];
+  postTypes?: string[];
+}
+
+export const BOARDS: BoardConfig[] = [
+  { key: "party", label: "공팟 모집", dungeons: DUNGEON_NAMES, postTypes: ["party"] },
+  { key: "bus", label: "승객 모집", dungeons: DUNGEON_NAMES, postTypes: ["bus"] },
+  { key: "field", label: "필드파티", dungeons: FIELD_NAMES, postTypes: ["field_party"] },
+  { key: "exp", label: "경팟", dungeons: EXP_NAMES, postTypes: ["exp_party"] },
+  { key: "mass_bus", label: "대량 모집", dungeons: MASS_BUS_NAMES, postTypes: ["mass_bus", "barrack_bus"] },
 ];
 
 // 포지션 정의
@@ -57,11 +84,14 @@ export const REPORT_CATEGORIES = {
 export type ReportCategory = keyof typeof REPORT_CATEGORIES;
 
 // 글 타입 라벨
-export const POST_TYPE_LABEL = {
-  party: "파티 모집",
+export const POST_TYPE_LABEL: Record<string, string> = {
+  party: "공팟 모집",
   bus: "승객 모집",
-  barrack_bus: "배럭 모집",
-} as const;
+  barrack_bus: "대량 모집",
+  field_party: "필드파티",
+  exp_party: "경팟 모집",
+  mass_bus: "대량 모집",
+};
 
 // 익명 기사 별명 (세션 ID 기반 결정적 선택)
 const ANON_ADJECTIVES = [

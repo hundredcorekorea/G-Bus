@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { toast, ToastContainer } from "@/components/ui/Toast";
 import { REPORT_CATEGORIES, type ReportCategory } from "@/lib/constants";
 import type { Report } from "@/lib/types";
+import { AdminTabs } from "@/components/admin/AdminTabs";
 
 const statusLabel: Record<string, string> = {
   pending: "대기 중",
@@ -134,6 +135,8 @@ export default function AdminReportsPage() {
       <ToastContainer />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        <AdminTabs />
+
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold flex items-center gap-2.5">
             <span className="w-1.5 h-6 bg-gbus-danger rounded-full" />

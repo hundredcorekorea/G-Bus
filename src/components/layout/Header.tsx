@@ -42,12 +42,28 @@ export function Header() {
               >
                 대시보드
               </Link>
+              {profile.barrack_verified && (
+                <Link
+                  href="/barrack"
+                  className="px-3 py-1.5 text-sm text-gbus-text-muted hover:text-gbus-text hover:bg-gbus-surface-light/40 rounded-lg transition-all duration-200"
+                >
+                  배럭
+                </Link>
+              )}
               <Link
-                href="/barrack"
+                href="/income"
                 className="px-3 py-1.5 text-sm text-gbus-text-muted hover:text-gbus-text hover:bg-gbus-surface-light/40 rounded-lg transition-all duration-200"
               >
-                배럭
+                소득
               </Link>
+              {profile.driver_verified && (
+                <Link
+                  href="/driver"
+                  className="px-3 py-1.5 text-sm text-gbus-text-muted hover:text-gbus-text hover:bg-gbus-surface-light/40 rounded-lg transition-all duration-200"
+                >
+                  기사
+                </Link>
+              )}
               {(profile.is_admin || profile.is_moderator) && (
                 <Link
                   href="/admin/users"

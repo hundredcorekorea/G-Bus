@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { toast } from "@/components/ui/Toast";
 import type { AdEntry } from "@/lib/types";
+import { AdminTabs } from "@/components/admin/AdminTabs";
 
 export default function AdminAdsPage() {
   const [ads, setAds] = useState<AdEntry[]>([]);
@@ -68,6 +69,8 @@ export default function AdminAdsPage() {
     <div className="min-h-screen">
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-8">
+        <AdminTabs />
+
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">광고 관리</h1>
           <Button size="sm" onClick={() => setShowForm(!showForm)}>
