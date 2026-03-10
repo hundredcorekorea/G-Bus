@@ -180,12 +180,13 @@ export default function NewSessionPage() {
 
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (!authSession?.user) {
       toast("로그인이 필요합니다.", "error");
       setLoading(false);
       return;
     }
+    const user = authSession.user;
 
     const title = buildTitle();
     const minCount = postType === "party" || postType === "field_party"

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { clearAuthCache } from "@/lib/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
@@ -21,11 +22,12 @@ export default function CompleteProfilePage() {
 
   useEffect(() => {
     const check = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         router.replace("/login");
         return;
       }
+      const user = session.user;
       // 이미 프로필 완성된 유저는 대시보드로
       const { data: profile } = await supabase
         .from("users")
@@ -70,12 +72,13 @@ export default function CompleteProfilePage() {
     setLoading(true);
     setError("");
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { session: authSession } } = await supabase.auth.getSession();
+    if (!authSession?.user) {
       setError("인증 정보가 없습니다. 다시 로그인해주세요.");
       setLoading(false);
       return;
     }
+    const user = authSession.user;
 
     // users 테이블 업데이트 (트리거로 이미 생성되었을 수 있음)
     const { error: upsertError } = await supabase
@@ -99,6 +102,8 @@ export default function CompleteProfilePage() {
       .update({ display_name: nickname.trim() })
       .eq("id", user.id);
 
+    // 프로필 캐시 초기화 (pending 페이지에서 최신 데이터 표시)
+    clearAuthCache();
     router.push("/pending");
   };
 

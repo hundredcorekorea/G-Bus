@@ -19,8 +19,9 @@ export default function PendingPage() {
 
   const handleRefresh = async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const user = session.user;
       const { data } = await supabase
         .from("users")
         .select("verified")

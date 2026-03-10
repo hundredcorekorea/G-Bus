@@ -81,8 +81,9 @@ export async function subscribeToPush(): Promise<boolean> {
     if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false;
 
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return false;
+    const user = session.user;
 
     await supabase.from("push_subscriptions").upsert({
       user_id: user.id,

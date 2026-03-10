@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, use } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeQueue } from "@/lib/hooks/useRealtimeQueue";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -21,10 +22,12 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const { id: sessionId } = use(params);
   const { session, reservations, loading, refetch } = useRealtimeQueue(sessionId);
   const { user, profile } = useAuth();
+  const router = useRouter();
   const [barracks, setBarracks] = useState<Barrack[]>([]);
   const [selectedBarracks, setSelectedBarracks] = useState<string[]>([]);
   const [reserving, setReserving] = useState(false);
   const [showReservePanel, setShowReservePanel] = useState(false);
+  const [isBeginner, setIsBeginner] = useState(false);
   const [bids, setBids] = useState<(Bid & { driver: { nickname: string; game_nickname: string } })[]>([]);
   const [selectedPositions, setSelectedPositions] = useState<Position[]>([]);
   const [posFilter, setPosFilter] = useState<Position | "all">("all");
@@ -50,8 +53,9 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const isSubDriver = sessionDrivers.some((d) => d.user_id === user?.id && d.role === "sub");
   const isDriver = isMainDriver || isSubDriver;
   const isParty = session?.post_type === "party" || session?.post_type === "field_party";
-  // mass_bus에서는 호스트 또는 기사가 컨트롤 가능
-  const canControl = isMassBus ? (isHost || isDriver) : isDriver;
+  const isAdminOrMod = profile?.is_admin || profile?.is_moderator || false;
+  // mass_bus에서는 호스트 또는 기사가 컨트롤 가능, admin/mod는 항상 가능
+  const canControl = isAdminOrMod || (isMassBus ? (isHost || isDriver) : isDriver);
 
   const togglePosition = (pos: Position) => {
     setSelectedPositions((prev) =>
@@ -101,7 +105,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       .eq("session_id", sessionId);
     setSessionDrivers((data as typeof sessionDrivers) || []);
   };
-  useEffect(() => { fetchDrivers(); }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchDrivers(); }, [sessionId]); // eslint-disable-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
 
   // mass_bus: 기사 신청 목록 로딩
   const fetchDriverApps = async () => {
@@ -113,7 +117,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
     setDriverApps((data as typeof driverApps) || []);
   };
   useEffect(() => {
-    if (isMassBus || session?.post_type === "mass_bus") fetchDriverApps();
+    if (isMassBus || session?.post_type === "mass_bus") fetchDriverApps(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [sessionId, session?.post_type]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddSubDriver = async () => {
@@ -218,7 +222,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
         onClick: `/session/${sessionId}`,
       });
     }
-  }, [currentQueueNo, myNextWaiting]);
+  }, [currentQueueNo, myNextWaiting, sessionId]);
 
   // 내 차례 호출 감지
   const myCalledReservation = reservations.find((r) => r.user_id === user?.id && r.status === "called");
@@ -234,7 +238,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       });
     }
     prevMyCalledRef.current = myCalledReservation?.id ?? null;
-  }, [myCalledReservation?.id]);
+  }, [myCalledReservation, sessionId]);
 
   // 파티 참여 수락 감지 (pending → waiting)
   const prevMyPendingCountRef = useRef<number>(myPending.length);
@@ -254,7 +258,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       });
     }
     prevMyPendingCountRef.current = myPending.length;
-  }, [myPending.length, myNextWaiting?.id]);
+  }, [myPending.length, myNextWaiting, isParty, sessionId]);
 
   const handleReserve = async () => {
     if (selectedBarracks.length === 0) { toast("예약할 캐릭터를 선택하세요.", "error"); return; }
@@ -265,11 +269,12 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       p_char_names: selectedBarracks,
       p_positions: selectedPositions.length > 0 ? selectedPositions : null,
       p_status: isParty ? "pending" : "waiting",
+      p_is_beginner: isBeginner,
     });
     if (error) toast("신청 실패: " + error.message, "error");
     else {
       toast(isParty ? "참여 신청 완료! 파장의 수락을 기다려 주세요." : `${selectedBarracks.length}개 캐릭터 예약 완료!`, "success");
-      setSelectedBarracks([]); setSelectedPositions([]); setShowReservePanel(false);
+      setSelectedBarracks([]); setSelectedPositions([]); setShowReservePanel(false); setIsBeginner(false);
     }
     setReserving(false);
   };
@@ -284,6 +289,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       p_char_names: selectedBarracks,
       p_positions: null,
       p_status: "waiting",
+      p_is_beginner: false,
     });
     if (error) toast("등록 실패: " + error.message, "error");
     else {
@@ -295,12 +301,8 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
   // mass_bus: 호스트가 대기열에서 캐릭터 제거
   const handleHostRemoveChar = async (reservationId: string) => {
-    const { error } = await supabase.from("reservations").delete().eq("id", reservationId);
+    const { error } = await supabase.rpc("cancel_reservation", { p_reservation_id: reservationId });
     if (error) { toast("제거 실패: " + error.message, "error"); return; }
-    await supabase.from("bus_sessions").update({
-      current_count: Math.max(0, (session?.current_count || 1) - 1),
-      updated_at: new Date().toISOString(),
-    }).eq("id", sessionId);
     toast("캐릭터가 대기열에서 제거되었습니다.", "info");
     refetch();
   };
@@ -355,11 +357,14 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleCallNext = async () => {
-    if (calledReservation) await supabase.from("reservations").update({ status: "done" }).eq("id", calledReservation.id);
+    if (calledReservation) {
+      const { error } = await supabase.from("reservations").update({ status: "done" }).eq("id", calledReservation.id);
+      if (error) { toast("완료 처리 실패: " + error.message, "error"); return; }
+    }
     const next = waitingReservations[0];
     if (next) {
-      await supabase.from("reservations").update({ status: "called" }).eq("id", next.id);
-      // 호출된 유저에게 서버 push
+      const { error } = await supabase.from("reservations").update({ status: "called" }).eq("id", next.id);
+      if (error) { toast("호출 실패: " + error.message, "error"); return; }
       sendPushToUser(next.user_id, {
         title: "G-BUS - 내 차례!",
         body: `${next.char_name} 호출되었습니다. 준비해주세요!`,
@@ -378,7 +383,8 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleSessionStatus = async (status: "running" | "completed" | "cancelled") => {
-    await supabase.from("bus_sessions").update({ status, updated_at: new Date().toISOString() }).eq("id", sessionId);
+    const { error } = await supabase.from("bus_sessions").update({ status, updated_at: new Date().toISOString() }).eq("id", sessionId);
+    if (error) { toast("상태 변경 실패: " + error.message, "error"); return; }
     refetch();
   };
 
@@ -402,27 +408,37 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleReject = async (reservationId: string) => {
-    const { error } = await supabase.from("reservations").delete().eq("id", reservationId);
+    const { error } = await supabase.rpc("cancel_reservation", { p_reservation_id: reservationId });
     if (error) toast("거절 실패: " + error.message, "error");
     else toast("거절 완료", "info");
     refetch();
   };
 
   const handleLeave = async (reservationId: string) => {
-    const r = reservations.find((rv) => rv.id === reservationId);
-    if (!r) return;
-    const { error } = await supabase.from("reservations").delete().eq("id", reservationId);
-    if (error) { toast("탈퇴 실패: " + error.message, "error"); return; }
-    if (r.status !== "pending") {
-      await supabase.from("bus_sessions").update({ current_count: Math.max(0, (session?.current_count || 1) - 1), updated_at: new Date().toISOString() }).eq("id", sessionId);
-    }
-    toast("파티에서 탈퇴했습니다.", "info");
+    const { error } = await supabase.rpc("cancel_reservation", { p_reservation_id: reservationId });
+    if (error) { toast("취소 실패: " + error.message, "error"); return; }
+    toast(isParty ? "파티에서 탈퇴했습니다." : "예약이 취소되었습니다.", "info");
+    refetch();
+  };
+
+  const handleSwapQueue = async (reservationId: string, direction: "up" | "down") => {
+    const waitingList = activeReservations.filter((r) => r.status === "waiting");
+    const currentIdx = waitingList.findIndex((r) => r.id === reservationId);
+    if (currentIdx < 0) return;
+    const swapIdx = direction === "up" ? currentIdx - 1 : currentIdx + 1;
+    if (swapIdx < 0 || swapIdx >= waitingList.length) return;
+    const { error } = await supabase.rpc("swap_queue_order", {
+      p_reservation_id_a: reservationId,
+      p_reservation_id_b: waitingList[swapIdx].id,
+    });
+    if (error) { toast("순서 변경 실패: " + error.message, "error"); return; }
     refetch();
   };
 
   const handleNextRound = async () => {
     if (!session) return;
-    await supabase.from("bus_sessions").update({ round: session.round + 1, updated_at: new Date().toISOString() }).eq("id", sessionId);
+    const { error } = await supabase.rpc("increment_round", { p_session_id: sessionId });
+    if (error) { toast("라운드 변경 실패: " + error.message, "error"); return; }
     refetch();
   };
 
@@ -450,11 +466,11 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Badge variant={
+                <Badge variant={  
                   session.post_type === "field_party" || session.post_type === "barrack_bus" ? "success"
                     : session.post_type === "bus" ? "accent"
                     : session.post_type === "exp_party" ? "warning"
-                    : session.post_type === "mass_bus" ? "primary"
+                    : session.post_type === "mass_bus" ? "primary"  
                     : "default"
                 }>
                   {POST_TYPE_LABEL[session.post_type]}
@@ -465,7 +481,31 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                   <Badge variant={statusVariant[session.status]}>{statusLabel[session.status]}</Badge>
                 </div>
               </div>
-              <h1 className="text-2xl font-bold">{session.title}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">{session.title}</h1>
+                {((isMainDriver || isHost) && session.status === "waiting" || isAdminOrMod) && (
+                  <button
+                    onClick={() => router.push(`/session/${sessionId}/edit`)}
+                    className="text-xs text-gbus-text-dim hover:text-gbus-primary-light transition-colors cursor-pointer px-1.5 py-0.5 rounded border border-gbus-border/30 hover:border-gbus-primary/30"
+                  >
+                    수정
+                  </button>
+                )}
+                {isAdminOrMod && (session.status === "waiting" || session.status === "cancelled") && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm("정말 이 세션을 삭제하시겠습니까?")) return;
+                      const { error } = await supabase.from("bus_sessions").delete().eq("id", sessionId);
+                      if (error) { toast("삭제 실패: " + error.message, "error"); return; }
+                      toast("세션이 삭제되었습니다.", "success");
+                      router.push("/dashboard");
+                    }}
+                    className="text-xs text-gbus-danger/70 hover:text-gbus-danger transition-colors cursor-pointer px-1.5 py-0.5 rounded border border-gbus-danger/20 hover:border-gbus-danger/40"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-3 mt-2 text-sm text-gbus-text-muted flex-wrap">
                 <span>{session.dungeon_name.replace(/,/g, " ")}</span>
                 {session.price_t != null && session.price_type !== "auction" && (
@@ -924,9 +964,9 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                   )}
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
                     {barracks.map((b) => {
-                      const done = reservations.some((r) => r.char_name === b.char_name && r.user_id === user?.id);
+                      const done = reservations.some((r) => r.char_name === b.char_name && r.user_id === user?.id && !r.is_beginner);
                       const lvBlocked = minDigiLv > 0 && (b.digi_lv == null || b.digi_lv < minDigiLv);
-                      const disabled = done || lvBlocked;
+                      const disabled = (done && !isBeginner) || lvBlocked;
                       const sel = selectedBarracks.includes(b.char_name);
                       return (
                         <button key={b.id} disabled={disabled} onClick={() => setSelectedBarracks((p) => sel ? p.filter((n) => n !== b.char_name) : [...p, b.char_name])}
@@ -935,7 +975,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                             : sel ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light shadow-[0_0_10px_rgba(108,92,231,0.12)]"
                             : "border-gbus-border/40 text-gbus-text-muted hover:border-gbus-primary/30 hover:text-gbus-text"
                           }`}>
-                          <span>{b.char_name}{done ? " (예약됨)" : lvBlocked ? " (레벨 부족)" : ""}</span>
+                          <span>{b.char_name}{done && !isBeginner ? " (예약됨)" : lvBlocked ? " (레벨 부족)" : ""}</span>
                           {(b.tamer_lv != null || b.digi_lv != null) && (
                             <span className="flex items-center gap-1 mt-0.5">
                               {b.tamer_lv != null && (
@@ -954,6 +994,16 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                       );
                     })}
                   </div>
+                  {/* 초행 체크박스 */}
+                  <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isBeginner}
+                      onChange={(e) => { setIsBeginner(e.target.checked); setSelectedBarracks([]); }}
+                      className="w-4 h-4 rounded border-gbus-border accent-gbus-primary"
+                    />
+                    <span className="text-sm text-gbus-text-muted">초행 (같은 캐릭터 중복 등록)</span>
+                  </label>
                   </>
                 )}
                 {/* 포지션 선택 (파티만) */}
@@ -1132,6 +1182,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                         <span className="text-gbus-text-dim font-medium">{displayName}</span>
                       )}
                       {mine && <Badge variant="primary">나</Badge>}
+                      {r.is_beginner && <Badge variant="warning">초행</Badge>}
                       {isParty && (r.positions && r.positions.length > 0
                         ? r.positions.map((pos) => {
                             const p = POSITIONS[pos as Position];
@@ -1156,12 +1207,31 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      {r.status === "waiting" && canControl && !isParty && (
+                        <div className="flex flex-col gap-0.5 mr-1">
+                          <button
+                            onClick={() => handleSwapQueue(r.id, "up")}
+                            disabled={(() => { const wl = activeReservations.filter((ar) => ar.status === "waiting"); return wl.indexOf(r) === 0; })()}
+                            className="text-[10px] text-gbus-text-dim hover:text-gbus-primary-light transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed px-1 leading-none"
+                            title="위로"
+                          >&#x25B2;</button>
+                          <button
+                            onClick={() => handleSwapQueue(r.id, "down")}
+                            disabled={(() => { const wl = activeReservations.filter((ar) => ar.status === "waiting"); return wl.indexOf(r) === wl.length - 1; })()}
+                            className="text-[10px] text-gbus-text-dim hover:text-gbus-primary-light transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed px-1 leading-none"
+                            title="아래로"
+                          >&#x25BC;</button>
+                        </div>
+                      )}
                       {r.status === "called" && <Badge variant="accent">호출됨</Badge>}
                       {r.status === "done" && <Badge variant="success">완료</Badge>}
                       {r.status === "noshow" && <Badge variant="danger">노쇼</Badge>}
                       {r.status === "waiting" && canControl && !isParty && <Button variant="ghost" size="sm" onClick={() => copyNickname(r.char_name)}>복사</Button>}
                       {isParty && mine && r.status === "waiting" && session?.status === "waiting" && (
                         <Button variant="danger" size="sm" onClick={() => handleLeave(r.id)}>탈퇴</Button>
+                      )}
+                      {!isParty && mine && r.status === "waiting" && session?.status === "waiting" && (
+                        <Button variant="danger" size="sm" onClick={() => handleLeave(r.id)}>취소</Button>
                       )}
                       {/* mass_bus 호스트는 대기열에서 캐릭터 제거 가능 */}
                       {isMassBus && isHost && r.status === "waiting" && session?.status === "waiting" && (
