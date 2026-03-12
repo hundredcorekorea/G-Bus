@@ -37,7 +37,7 @@ export default function BarrackPage() {
   };
 
   useEffect(() => {
-    if (user) fetchBarracks();
+    if (user) fetchBarracks(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAdd = async () => {
@@ -110,7 +110,8 @@ export default function BarrackPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from("barracks").delete().eq("id", id);
+    const { error } = await supabase.from("barracks").delete().eq("id", id);
+    if (error) { toast("삭제 실패: " + error.message, "error"); return; }
     toast("삭제되었습니다.", "info");
     fetchBarracks();
   };

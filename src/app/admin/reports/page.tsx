@@ -81,7 +81,7 @@ export default function AdminReportsPage() {
   };
 
   useEffect(() => {
-    if (me?.is_admin || me?.is_moderator) fetchReports();
+    if (me?.is_admin || me?.is_moderator) fetchReports(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [filter, me]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAction = async (reportId: string, status: "dismissed" | "warned" | "actioned", suspendDays?: number) => {
@@ -98,20 +98,22 @@ export default function AdminReportsPage() {
 
     // 경고: honor_score 감소
     if (status === "warned") {
-      await supabase
+      const { error: honorErr } = await supabase
         .from("users")
         .update({ honor_score: Math.max(0, report.reported.honor_score - 10) })
         .eq("id", report.reported_id);
+      if (honorErr) { toast("명예 점수 감소 실패: " + honorErr.message, "error"); return; }
     }
 
     // 정지: suspended_until 설정
     if (status === "actioned" && suspendDays) {
       const until = new Date();
       until.setDate(until.getDate() + suspendDays);
-      await supabase
+      const { error: suspendErr } = await supabase
         .from("users")
         .update({ suspended_until: until.toISOString() })
         .eq("id", report.reported_id);
+      if (suspendErr) { toast("정지 처리 실패: " + suspendErr.message, "error"); return; }
     }
 
     toast(

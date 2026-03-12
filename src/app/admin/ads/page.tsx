@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
@@ -35,7 +36,8 @@ export default function AdminAdsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchAds(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  useEffect(() => { fetchAds(); }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,13 +54,15 @@ export default function AdminAdsPage() {
   };
 
   const handleToggle = async (id: string, active: boolean) => {
-    await supabase.from("ads_manager").update({ active: !active }).eq("id", id);
+    const { error } = await supabase.from("ads_manager").update({ active: !active }).eq("id", id);
+    if (error) { toast("변경 실패: " + error.message, "error"); return; }
     fetchAds();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    await supabase.from("ads_manager").delete().eq("id", id);
+    const { error } = await supabase.from("ads_manager").delete().eq("id", id);
+    if (error) { toast("삭제 실패: " + error.message, "error"); return; }
     toast("삭제되었습니다.", "success");
     fetchAds();
   };
@@ -115,7 +119,7 @@ export default function AdminAdsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       {ad.img_url && (
-                        <img src={ad.img_url} alt={ad.app_name} className="w-6 h-6 rounded-md" />
+                        <Image src={ad.img_url} alt={ad.app_name} width={24} height={24} className="w-6 h-6 rounded-md" unoptimized />
                       )}
                       <span className="font-medium">{ad.app_name}</span>
                       <Badge variant={ad.active ? "success" : "default"}>
@@ -137,7 +141,7 @@ export default function AdminAdsPage() {
                 </div>
                 {ad.banner_url && (
                   <div className="mt-2 rounded-lg overflow-hidden">
-                    <img src={ad.banner_url} alt="배너 미리보기" className="w-full h-24 object-cover opacity-70" />
+                    <Image src={ad.banner_url} alt="배너 미리보기" width={400} height={96} className="w-full h-24 object-cover opacity-70" unoptimized />
                   </div>
                 )}
               </div>

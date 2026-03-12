@@ -147,7 +147,8 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleRemoveSubDriver = async (driverId: string) => {
-    await supabase.from("session_drivers").delete().eq("id", driverId);
+    const { error } = await supabase.from("session_drivers").delete().eq("id", driverId);
+    if (error) { toast("제거 실패: " + error.message, "error"); return; }
     toast("보조기사가 제거되었습니다.", "info");
     fetchDrivers();
   };
@@ -179,8 +180,8 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
     const { error } = await supabase.from("bids").update({
       price_t: Number(editBidPrice), message: editBidMessage.trim() || null,
     }).eq("id", editingBidId);
-    if (error) toast("수정 실패: " + error.message, "error");
-    else { toast("입찰이 수정되었습니다!", "success"); setEditingBidId(null); }
+    if (error) { toast("수정 실패: " + error.message, "error"); setBidding(false); return; }
+    toast("입찰이 수정되었습니다!", "success"); setEditingBidId(null);
     setBidding(false);
     refreshBids();
   };
@@ -335,9 +336,10 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
     if (status === "accepted") {
       const app = driverApps.find((a) => a.id === appId);
       if (app) {
-        await supabase.from("session_drivers").insert({
+        const { error: insertErr } = await supabase.from("session_drivers").insert({
           session_id: sessionId, user_id: app.driver_id, role: "main",
         });
+        if (insertErr) { toast("기사 등록 실패: " + insertErr.message, "error"); return; }
       }
       toast("기사를 수락했습니다!", "success");
       // 수락된 기사에게 서버 push
@@ -462,9 +464,9 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       <ToastContainer />
       <main className="max-w-4xl mx-auto px-4 py-8 animate-fade-up">
         {/* 세션 헤더 */}
-        <div className="glass rounded-2xl p-6 mb-5">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
+        <div className="glass rounded-2xl p-4 sm:p-6 mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <Badge variant={  
                   session.post_type === "field_party" || session.post_type === "barrack_bus" ? "success"
@@ -481,8 +483,8 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                   <Badge variant={statusVariant[session.status]}>{statusLabel[session.status]}</Badge>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold">{session.title}</h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold break-all">{session.title}</h1>
                 {((isMainDriver || isHost) && session.status === "waiting" || isAdminOrMod) && (
                   <button
                     onClick={() => router.push(`/session/${sessionId}/edit`)}
@@ -521,12 +523,12 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* 카운터 */}
-            <div className="text-center bg-gbus-bg/40 rounded-2xl px-6 py-4 border border-gbus-border/20 ml-4">
-              <div className={`text-4xl font-black ${(session.current_count || 0) >= (totalTarget || 1) ? "text-gbus-success animate-count-pulse" : "text-gbus-text"}`}>
+            <div className="flex sm:flex-col items-center sm:items-center gap-3 sm:gap-0 bg-gbus-bg/40 rounded-2xl px-4 sm:px-6 py-3 sm:py-4 border border-gbus-border/20 text-center shrink-0">
+              <div className={`text-3xl sm:text-4xl font-black ${(session.current_count || 0) >= (totalTarget || 1) ? "text-gbus-success animate-count-pulse" : "text-gbus-text"}`}>
                 {session.current_count}
               </div>
-              <div className="text-xs text-gbus-text-dim mt-0.5">/ {totalTarget}명</div>
-              <div className="text-xs text-gbus-primary-light font-medium mt-1">R{session.round}</div>
+              <div className="text-xs text-gbus-text-dim sm:mt-0.5">/ {totalTarget}명</div>
+              <div className="text-xs text-gbus-primary-light font-medium sm:mt-1">R{session.round}</div>
             </div>
           </div>
 

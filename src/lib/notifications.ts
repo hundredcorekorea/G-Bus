@@ -85,14 +85,14 @@ export async function subscribeToPush(): Promise<boolean> {
     if (!session?.user) return false;
     const user = session.user;
 
-    await supabase.from("push_subscriptions").upsert({
+    const { error } = await supabase.from("push_subscriptions").upsert({
       user_id: user.id,
       endpoint: json.endpoint,
       p256dh: json.keys.p256dh,
       auth: json.keys.auth,
     }, { onConflict: "user_id,endpoint" });
 
-    return true;
+    return !error;
   } catch {
     return false;
   }

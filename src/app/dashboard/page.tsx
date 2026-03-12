@@ -134,7 +134,7 @@ export default function DashboardPage() {
       });
     }
     return result;
-  }, [sessions, activeBoard, selectedDungeons]);
+  }, [sessions, activeBoard, selectedDungeons, profile?.upper_dungeon_verified, profile?.upper_field_verified]);
 
   // 각 게시판별 세션 수 (탭 카운트용, 인증 필터 적용)
   const boardCounts = useMemo(() => {
@@ -213,13 +213,13 @@ export default function DashboardPage() {
 
         {/* 모집 게시판 */}
         <section className="animate-fade-up-d1">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold flex items-center gap-2.5">
+          <div className="flex items-center justify-between mb-5 gap-2">
+            <h2 className="text-lg font-bold flex items-center gap-2.5 shrink-0">
               <span className="w-1.5 h-5 bg-gbus-primary rounded-full" />
               모집 게시판
             </h2>
             <Link href="/session/new">
-              <Button size="sm" className="btn-shine">+ 글 작성</Button>
+              <Button size="sm" className="btn-shine whitespace-nowrap">+ 글 작성</Button>
             </Link>
           </div>
 
