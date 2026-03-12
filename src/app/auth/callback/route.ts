@@ -42,6 +42,11 @@ export async function GET(request: Request) {
       } = await supabase.auth.getUser();
 
       if (user) {
+        // 비밀번호 재설정 플로우 — next 파라미터 우선
+        if (next === "/reset-password") {
+          return NextResponse.redirect(`${origin}/reset-password`);
+        }
+
         const { data: profile } = await supabase
           .from("users")
           .select("id, game_nickname")

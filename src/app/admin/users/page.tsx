@@ -43,6 +43,8 @@ export default function AdminUsersPage() {
   const [filter, setFilter] = useState<"pending" | "all">("pending");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [adminNote, setAdminNote] = useState<Record<string, string>>({});
+  const [memoValues, setMemoValues] = useState<Record<string, string>>({});
+  const [banModal, setBanModal] = useState<{ userId: string; nickname: string } | null>(null);
   const supabase = createClient();
 
   const fetchUsers = async () => {
@@ -53,6 +55,13 @@ export default function AdminUsersPage() {
       }
       const { data } = await query;
       setUsers(data || []);
+
+      // 관리자 메모 초기화
+      const memoInit: Record<string, string> = {};
+      for (const u of (data || [])) {
+        if (u.admin_memo) memoInit[u.id] = u.admin_memo;
+      }
+      setMemoValues(memoInit);
 
       // 유저별 신고 데이터 조회 (status 포함)
       if (data && data.length > 0) {
@@ -144,6 +153,35 @@ export default function AdminUsersPage() {
       return;
     }
     toast(`${roleLabel[role] || "일반 유저"}로 변경되었습니다.`, "success");
+    fetchUsers();
+  };
+
+  const handleSaveMemo = async (userId: string) => {
+    const memo = memoValues[userId]?.trim() || null;
+    const { error } = await supabase.from("users").update({ admin_memo: memo }).eq("id", userId);
+    if (error) { toast("메모 저장 실패: " + error.message, "error"); return; }
+    toast("메모가 저장되었습니다.", "success");
+    fetchUsers();
+  };
+
+  const handleBan = async (userId: string, days: number | "permanent") => {
+    const until = days === "permanent"
+      ? new Date("9999-12-31T23:59:59Z").toISOString()
+      : (() => { const d = new Date(); d.setDate(d.getDate() + (days as number)); return d.toISOString(); })();
+    const { error } = await supabase.from("users").update({ suspended_until: until }).eq("id", userId);
+    if (error) { toast("차단 실패: " + error.message, "error"); return; }
+    toast(days === "permanent" ? "영구 차단되었습니다." : `${days}일 차단되었습니다.`, "success");
+    setBanModal(null);
+    fetchUsers();
+  };
+
+  const handleDeleteUser = async (userId: string, nickname: string) => {
+    if (!me?.is_admin) { toast("관리자만 회원을 삭제할 수 있습니다.", "error"); return; }
+    if (!confirm(`정말 "${nickname}" 회원을 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    if (!confirm("한번 더 확인합니다. 정말 삭제하시겠습니까?")) return;
+    const { error } = await supabase.from("users").delete().eq("id", userId);
+    if (error) { toast("삭제 실패: " + error.message, "error"); return; }
+    toast("회원이 삭제되었습니다.", "success");
     fetchUsers();
   };
 
@@ -251,11 +289,14 @@ export default function AdminUsersPage() {
                         {u.driver_verified && <Badge variant="success">기사</Badge>}
                         {u.is_admin && <Badge variant="accent">관리자</Badge>}
                         {u.is_moderator && <Badge variant="accent">부관리자</Badge>}
+                        {u.is_influencer && <Badge variant="warning">인플루언서</Badge>}
                         {rs.confirmed > 0 && <Badge variant="danger">제재 {rs.confirmed}건</Badge>}
                         {rs.pending > 0 && <Badge variant="warning">미처리 신고 {rs.pending}건</Badge>}
                         {rs.dismissed > 0 && <span className="text-[10px] text-gbus-text-dim">(기각 {rs.dismissed}건)</span>}
                         {u.suspended_until && new Date(u.suspended_until) > new Date() && (
-                          <Badge variant="danger">정지 중 (~{new Date(u.suspended_until).toLocaleDateString("ko-KR")})</Badge>
+                          new Date(u.suspended_until).getFullYear() >= 9999
+                            ? <Badge variant="danger">영구 차단</Badge>
+                            : <Badge variant="danger">정지 중 (~{new Date(u.suspended_until).toLocaleDateString("ko-KR")})</Badge>
                         )}
                       </div>
                       <div className="text-sm text-gbus-text-muted">
@@ -310,6 +351,13 @@ export default function AdminUsersPage() {
                           >
                             {u.driver_verified ? "기사✕" : "기사"}
                           </Button>
+                          <Button
+                            variant={u.is_influencer ? "danger" : "secondary"}
+                            size="sm"
+                            onClick={() => handleToggleVerify(u.id, "is_influencer", u.is_influencer, "인플루언서")}
+                          >
+                            {u.is_influencer ? "인플✕" : "인플"}
+                          </Button>
                         </div>
                       )}
                       {/* 정지 해제 */}
@@ -340,8 +388,36 @@ export default function AdminUsersPage() {
                           <option value="admin">관리자</option>
                         </select>
                       )}
+                      {/* 차단 (admin+mod) */}
+                      {u.verified && (me?.is_admin || me?.is_moderator) && u.id !== me?.id && !u.is_admin && (
+                        <Button variant="danger" size="sm" onClick={() => setBanModal({ userId: u.id, nickname: u.game_nickname || u.nickname })}>
+                          차단
+                        </Button>
+                      )}
+                      {/* 회원 삭제 (admin만) */}
+                      {u.verified && me?.is_admin && u.id !== me.id && !u.is_admin && (
+                        <Button variant="danger" size="sm" onClick={() => handleDeleteUser(u.id, u.game_nickname || u.nickname)}>
+                          삭제
+                        </Button>
+                      )}
                     </div>
                   </div>
+
+                  {/* 관리자 메모 */}
+                  {u.verified && (me?.is_admin || me?.is_moderator) && (
+                    <div className="mt-3 border-t border-gbus-border/20 pt-3">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={memoValues[u.id] || ""}
+                          onChange={(e) => setMemoValues((prev) => ({ ...prev, [u.id]: e.target.value }))}
+                          placeholder="관리자 메모 (관리자만 볼 수 있음)"
+                          className="flex-1 px-3 py-2 bg-gbus-bg/40 border border-gbus-border/40 rounded-lg text-xs text-gbus-text placeholder:text-gbus-text-dim focus:outline-none focus:border-gbus-primary transition-all"
+                        />
+                        <Button variant="secondary" size="sm" onClick={() => handleSaveMemo(u.id)}>저장</Button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* 신고 내역 (확장) */}
                   {isExpanded && reports.length > 0 && (
@@ -402,6 +478,34 @@ export default function AdminUsersPage() {
           </div>
         )}
       </main>
+
+      {/* 차단 모달 */}
+      {banModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setBanModal(null)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-sm glass rounded-2xl p-6 animate-fade-up" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-1 flex items-center gap-2.5">
+              <span className="w-1.5 h-5 bg-gbus-danger rounded-full" />
+              차단
+            </h2>
+            <p className="text-sm text-gbus-text-muted mb-5">
+              대상: <span className="text-gbus-text font-semibold">{banModal.nickname}</span>
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button variant="danger" size="sm" onClick={() => handleBan(banModal.userId, 1)}>1일 차단</Button>
+              <Button variant="danger" size="sm" onClick={() => handleBan(banModal.userId, 3)}>3일 차단</Button>
+              <Button variant="danger" size="sm" onClick={() => handleBan(banModal.userId, 7)}>7일 차단</Button>
+              <Button variant="danger" size="sm" onClick={() => handleBan(banModal.userId, 30)}>30일 차단</Button>
+              {me?.is_admin && (
+                <Button variant="danger" size="sm" onClick={() => handleBan(banModal.userId, "permanent")} className="!bg-gbus-danger/30 !border-gbus-danger/60">
+                  영구 차단
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => setBanModal(null)}>취소</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

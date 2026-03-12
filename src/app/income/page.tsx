@@ -53,7 +53,7 @@ export default function IncomePage() {
   };
 
   useEffect(() => {
-    if (user) fetchRecords();
+    if (user) fetchRecords(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 소득 실시간 미리보기

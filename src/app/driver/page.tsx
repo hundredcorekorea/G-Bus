@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+
 import { Badge } from "@/components/ui/Badge";
 import { toast, ToastContainer } from "@/components/ui/Toast";
 import type { DriverCustomer } from "@/lib/types";
@@ -183,6 +183,7 @@ export default function DriverPage() {
 
   useEffect(() => {
     if (!user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeTab === "customers") fetchCustomers();
     else if (activeTab === "income") fetchIncome();
     else if (activeTab === "passengers") fetchPassengers();
@@ -461,10 +462,10 @@ export default function DriverPage() {
                           color: "#e8e4f0",
                           fontSize: 13,
                         }}
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        formatter={((value: any, name: any) => [
+                        formatter={((value: number, name: string) => [
                           `${(value ?? 0).toLocaleString()} ${name === "total_income" ? "T" : "회"}`,
                           name === "total_income" ? "수입" : "세션",
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         ]) as any}
                       />
                       <Bar dataKey="total_income" fill="rgba(124,109,240,0.7)" radius={[4, 4, 0, 0]} />
@@ -519,9 +520,9 @@ export default function DriverPage() {
                           cx="50%"
                           cy="50%"
                           outerRadius={90}
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          label={((props: any) =>
+                          label={((props: { dungeon_name: string; pct: number }) =>
                             `${props.dungeon_name} ${props.pct}%`
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           ) as any}
                           labelLine={{ stroke: "rgba(255,255,255,0.2)" }}
                         >

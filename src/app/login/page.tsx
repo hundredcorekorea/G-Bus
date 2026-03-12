@@ -229,6 +229,14 @@ export default function LoginPage() {
             <Button type="submit" loading={loading} size="lg" className="w-full mt-2 btn-shine">
               {mode === "login" ? "로그인" : "회원가입"}
             </Button>
+
+            {mode === "login" && (
+              <div className="text-center mt-3">
+                <Link href="/forgot-password" className="text-xs text-gbus-text-dim hover:text-gbus-primary-light transition-colors">
+                  비밀번호를 잊으셨나요?
+                </Link>
+              </div>
+            )}
           </form>
 
           {/* 소셜 로그인 구분선 */}

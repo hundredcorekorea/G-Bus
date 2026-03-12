@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Reservation, BusSession } from "@/lib/types";
 
@@ -8,9 +8,10 @@ export function useRealtimeQueue(sessionId: string) {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [session, setSession] = useState<BusSession | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
 
   const fetchData = useCallback(async () => {
+    const supabase = supabaseRef.current;
     const [sessionRes, reservationsRes] = await Promise.all([
       supabase.from("bus_sessions").select("*").eq("id", sessionId).single(),
       supabase
@@ -23,11 +24,12 @@ export function useRealtimeQueue(sessionId: string) {
     if (sessionRes.data) setSession(sessionRes.data);
     if (reservationsRes.data) setReservations(reservationsRes.data);
     setLoading(false);
-  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   useEffect(() => {
     fetchData();
 
+    const supabase = supabaseRef.current;
     const channel = supabase
       .channel(`session-${sessionId}`)
       .on(
@@ -38,10 +40,7 @@ export function useRealtimeQueue(sessionId: string) {
           table: "reservations",
           filter: `session_id=eq.${sessionId}`,
         },
-        () => {
-          // 변경 감지 시 전체 재조회 (간단한 전략)
-          fetchData();
-        }
+        () => fetchData()
       )
       .on(
         "postgres_changes",
@@ -60,7 +59,7 @@ export function useRealtimeQueue(sessionId: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessionId, fetchData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionId, fetchData]);
 
   return { session, reservations, loading, refetch: fetchData };
 }

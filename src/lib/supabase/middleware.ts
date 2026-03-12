@@ -27,9 +27,13 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
+  // getSession()은 네트워크 호출 없이 쿠키의 JWT만 확인 (빠르고 안정적)
+  // getUser()는 매번 Supabase Auth API를 호출하여 타임아웃/레이트리밋 시 세션 끊김 발생
+  // 실제 데이터 보안은 Supabase RLS가 처리하므로 미들웨어는 getSession()으로 충분
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   const pathname = request.nextUrl.pathname;
 
@@ -50,7 +54,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 공개 경로
-  const publicPaths = ["/", "/login", "/terms", "/privacy", "/debug"];
+  const publicPaths = ["/", "/login", "/terms", "/privacy", "/debug", "/forgot-password", "/reset-password"];
   if (publicPaths.includes(pathname) || pathname.startsWith("/auth/") || pathname.startsWith("/api/")) {
     return supabaseResponse;
   }
@@ -60,10 +64,10 @@ export async function updateSession(request: NextRequest) {
     return redirectTo("/login");
   }
 
-  // 유저 프로필 조회 (verified, is_admin)
+  // 유저 프로필 조회
   const { data: profile } = await supabase
     .from("users")
-    .select("verified, is_admin, is_moderator")
+    .select("verified, is_admin, is_moderator, game_nickname")
     .eq("id", user.id)
     .single();
 
@@ -72,12 +76,13 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // 프로필 없으면 pending으로
-  if (!profile) {
-    if (pathname !== "/pending") {
-      return redirectTo("/pending");
+  // 프로필 없거나 game_nickname 미입력 → complete-profile로
+  // (OAuth 가입 후 프로필 미완성 상태)
+  if (!profile || !profile.game_nickname) {
+    if (pathname === "/pending") {
+      return supabaseResponse;
     }
-    return supabaseResponse;
+    return redirectTo("/complete-profile");
   }
 
   // 미승인 유저 → pending (pending 페이지는 허용)

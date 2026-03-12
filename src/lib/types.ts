@@ -12,10 +12,12 @@ export interface User {
   digi_lv: number;
   is_admin: boolean;
   is_moderator: boolean;
+  is_influencer: boolean;
   honor_score: number;
   noshow_count: number;
   hc_account_id: string | null;
   suspended_until: string | null;
+  admin_memo: string | null;
   created_at: string;
 }
 
@@ -79,6 +81,7 @@ export interface Reservation {
   positions: string[] | null;
   tamer_lv: number | null;
   digi_lv: number | null;
+  is_beginner: boolean;
   status: "pending" | "waiting" | "called" | "done" | "noshow";
   created_at: string;
   // joined
@@ -144,6 +147,22 @@ export interface SessionDriver {
   created_at: string;
   // joined
   user?: User;
+}
+
+export type NoticeCategory = "notice" | "event" | "update";
+
+export interface Notice {
+  id: string;
+  author_id: string;
+  title: string;
+  content: string;
+  category: NoticeCategory;
+  pinned: boolean;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  // joined
+  author?: User;
 }
 
 export interface NicknameChangeRequest {

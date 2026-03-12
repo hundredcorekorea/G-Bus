@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import type { AdEntry } from "@/lib/types";
 
@@ -44,10 +45,13 @@ export function PromoCard({ placement, className = "" }: PromoCardProps) {
         className={`block max-w-md mx-auto glass rounded-2xl overflow-hidden hover:border-gbus-primary/30 transition-all duration-300 border-glow group ${className}`}
       >
         <div className="relative overflow-hidden">
-          <img
+          <Image
             src={ad.banner_url}
             alt={ad.title}
+            width={400}
+            height={200}
             className="w-full h-auto object-cover group-hover:scale-[1.03] transition-transform duration-500"
+            unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-3">
@@ -71,7 +75,7 @@ export function PromoCard({ placement, className = "" }: PromoCardProps) {
     >
       <div className="flex items-center gap-3">
         {ad.img_url && (
-          <img src={ad.img_url} alt={ad.app_name} className="w-10 h-10 rounded-xl" />
+          <Image src={ad.img_url} alt={ad.app_name} width={40} height={40} className="w-10 h-10 rounded-xl" unoptimized />
         )}
         <div className="flex-1">
           <div className="flex items-center gap-2">
