@@ -43,7 +43,7 @@ export function Header() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-0.5">
+        <nav className="hidden lg:flex items-center gap-0.5">
           {loading ? (
             <div className="flex items-center gap-2">
               <div className="w-16 h-6 rounded shimmer" />
@@ -86,7 +86,7 @@ export function Header() {
         </nav>
 
         {/* Mobile: user info + hamburger */}
-        <div className="flex md:hidden items-center gap-2">
+        <div className="flex lg:hidden items-center gap-2">
           {loading ? (
             <div className="w-12 h-6 rounded shimmer" />
           ) : isLoggedIn ? (
@@ -123,7 +123,7 @@ export function Header() {
 
       {/* Mobile dropdown menu */}
       {menuOpen && isLoggedIn && (
-        <div className="md:hidden border-t border-gbus-border/30 bg-gbus-surface/95 backdrop-blur-xl animate-fade-up">
+        <div className="lg:hidden border-t border-gbus-border/30 bg-gbus-surface/95 backdrop-blur-xl animate-fade-up">
           <div className="max-w-6xl mx-auto px-4 py-3 space-y-1">
             {navLinks.map((link) => (
               <Link
