@@ -11,6 +11,12 @@ let cachedProfile: User | null = null;
 let cachedHcProfile: HCProfile | null = null;
 let cachedUserId: string | null = null;
 
+export function clearAuthCache() {
+  cachedUserId = null;
+  cachedProfile = null;
+  cachedHcProfile = null;
+}
+
 export function useAuth() {
   const [user, setUser] = useState<SupabaseUser | null>(cachedUser);
   const [profile, setProfile] = useState<User | null>(cachedProfile);
