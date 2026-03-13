@@ -40,6 +40,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const [reportTarget, setReportTarget] = useState<{ userId: string; name: string } | null>(null);
   const [sessionDrivers, setSessionDrivers] = useState<(SessionDriver & { user: { nickname: string; game_nickname: string } })[]>([]);
   const [subDriverNick, setSubDriverNick] = useState("");
+  const [subDriverShare, setSubDriverShare] = useState(30);
   const [addingSubDriver, setAddingSubDriver] = useState(false);
   // mass_bus 전용
   const [driverApps, setDriverApps] = useState<(DriverApplication & { driver: { nickname: string; game_nickname: string } })[]>([]);
@@ -122,6 +123,10 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
   const handleAddSubDriver = async () => {
     if (!subDriverNick.trim()) return;
+    if (subDriverShare < 1 || subDriverShare > 99) {
+      toast("수익 비율은 1~99% 사이로 입력해주세요.", "error");
+      return;
+    }
     setAddingSubDriver(true);
     const { data: found } = await supabase
       .from("users")
@@ -134,13 +139,23 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       return;
     }
     const { error } = await supabase.from("session_drivers").insert({
-      session_id: sessionId, user_id: found.id, role: "sub",
+      session_id: sessionId, user_id: found.id, role: "sub", revenue_share_pct: subDriverShare,
     });
     if (error) {
       toast(error.message.includes("duplicate") ? "이미 등록된 기사입니다." : "추가 실패: " + error.message, "error");
     } else {
+      // 메인 기사의 수익 비율 자동 조정 (나머지 = 100 - 보조기사들 합산)
+      const { data: allDrivers } = await supabase.from("session_drivers").select("id, role, revenue_share_pct").eq("session_id", sessionId);
+      if (allDrivers) {
+        const subTotal = allDrivers.filter((d) => d.role === "sub").reduce((sum, d) => sum + (d.revenue_share_pct || 0), 0);
+        const mainDriver = allDrivers.find((d) => d.role === "main");
+        if (mainDriver) {
+          await supabase.from("session_drivers").update({ revenue_share_pct: Math.max(1, 100 - subTotal) }).eq("id", mainDriver.id);
+        }
+      }
       toast("보조기사가 추가되었습니다!", "success");
       setSubDriverNick("");
+      setSubDriverShare(30);
     }
     setAddingSubDriver(false);
     fetchDrivers();
@@ -149,6 +164,15 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const handleRemoveSubDriver = async (driverId: string) => {
     const { error } = await supabase.from("session_drivers").delete().eq("id", driverId);
     if (error) { toast("제거 실패: " + error.message, "error"); return; }
+    // 메인 기사 비율 재조정 (보조 제거 후 나머지 100% 분배)
+    const { data: remaining } = await supabase.from("session_drivers").select("id, role, revenue_share_pct").eq("session_id", sessionId);
+    if (remaining) {
+      const subTotal = remaining.filter((d) => d.role === "sub").reduce((sum, d) => sum + (d.revenue_share_pct || 0), 0);
+      const mainDriver = remaining.find((d) => d.role === "main");
+      if (mainDriver) {
+        await supabase.from("session_drivers").update({ revenue_share_pct: 100 - subTotal }).eq("id", mainDriver.id);
+      }
+    }
     toast("보조기사가 제거되었습니다.", "info");
     fetchDrivers();
   };
@@ -367,12 +391,23 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
     if (next) {
       const { error } = await supabase.from("reservations").update({ status: "called" }).eq("id", next.id);
       if (error) { toast("호출 실패: " + error.message, "error"); return; }
+      // 호출된 사람에게 알림
       sendPushToUser(next.user_id, {
         title: "G-BUS - 내 차례!",
         body: `${next.char_name} 호출되었습니다. 준비해주세요!`,
         tag: `called-${sessionId}`,
         url: `/session/${sessionId}`,
       });
+      // QUEUE_ALERT_BEFORE(3)번째 뒤 대기자에게 "곧 차례" 알림
+      const alertTarget = waitingReservations[QUEUE_ALERT_BEFORE];
+      if (alertTarget && alertTarget.user_id !== next.user_id) {
+        sendPushToUser(alertTarget.user_id, {
+          title: "G-BUS - 곧 내 차례!",
+          body: `${alertTarget.char_name} - 약 ${QUEUE_ALERT_BEFORE}명 후 호출됩니다. 준비해주세요!`,
+          tag: `alert-${sessionId}`,
+          url: `/session/${sessionId}`,
+        });
+      }
     }
     refetch();
   };
@@ -769,6 +804,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                         <Badge variant={d.role === "main" ? "primary" : "accent"}>
                           {d.role === "main" ? "메인" : "보조"}
                         </Badge>
+                        <span className="text-xs text-gbus-accent font-bold">{d.revenue_share_pct ?? 100}%</span>
                       </div>
                       {isMainDriver && d.role === "sub" && (
                         <button onClick={() => handleRemoveSubDriver(d.id)} className="text-xs text-gbus-danger/70 hover:text-gbus-danger transition-colors">&times;</button>
@@ -777,16 +813,29 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                   ))}
                 </div>
                 {isMainDriver && session.status === "waiting" && (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={subDriverNick}
-                      onChange={(e) => setSubDriverNick(e.target.value)}
-                      placeholder="보조기사 인게임 닉네임"
-                      className="flex-1 px-3 py-2 bg-gbus-bg/40 border border-gbus-border/40 rounded-xl text-sm text-gbus-text placeholder:text-gbus-text-dim focus:outline-none focus:border-gbus-primary focus:ring-2 focus:ring-gbus-primary/15 transition-all"
-                      onKeyDown={(e) => e.key === "Enter" && handleAddSubDriver()}
-                    />
-                    <Button size="sm" onClick={handleAddSubDriver} loading={addingSubDriver} disabled={!subDriverNick.trim()}>추가</Button>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={subDriverNick}
+                        onChange={(e) => setSubDriverNick(e.target.value)}
+                        placeholder="보조기사 인게임 닉네임"
+                        className="flex-1 px-3 py-2 bg-gbus-bg/40 border border-gbus-border/40 rounded-xl text-sm text-gbus-text placeholder:text-gbus-text-dim focus:outline-none focus:border-gbus-primary focus:ring-2 focus:ring-gbus-primary/15 transition-all"
+                        onKeyDown={(e) => e.key === "Enter" && handleAddSubDriver()}
+                      />
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={1} max={99}
+                          value={subDriverShare}
+                          onChange={(e) => setSubDriverShare(Number(e.target.value))}
+                          className="w-16 px-2 py-2 bg-gbus-bg/40 border border-gbus-border/40 rounded-xl text-sm text-gbus-text text-center focus:outline-none focus:border-gbus-primary focus:ring-2 focus:ring-gbus-primary/15 transition-all"
+                        />
+                        <span className="text-xs text-gbus-text-dim">%</span>
+                      </div>
+                      <Button size="sm" onClick={handleAddSubDriver} loading={addingSubDriver} disabled={!subDriverNick.trim()}>추가</Button>
+                    </div>
+                    <p className="text-xs text-gbus-text-dim">보조기사 수익 비율을 입력하세요 (메인 기사 비율은 자동 조정)</p>
                   </div>
                 )}
               </div>

@@ -395,10 +395,26 @@ export default function DriverPage() {
         {/* Tab 2: 수입 그래프 */}
         {activeTab === "income" && (
           <div className="space-y-4">
+            {/* 당일 수입 하이라이트 */}
+            {(() => {
+              const today = new Date().toISOString().split("T")[0];
+              const todayData = incomeSummary.find((r) => r.income_date === today);
+              return todayData ? (
+                <div className="glass rounded-2xl p-5 text-center border border-gbus-primary/20">
+                  <div className="text-xs text-gbus-text-dim mb-1 uppercase tracking-wider font-bold">오늘 수입</div>
+                  <div className="text-2xl font-black text-gbus-primary-light">
+                    {Number(todayData.total_income).toLocaleString()} T
+                  </div>
+                  <div className="text-xs text-gbus-text-muted mt-1">{Number(todayData.session_count)}세션 완료</div>
+                  <p className="text-[10px] text-gbus-text-dim mt-2">수익 비율이 반영된 금액입니다</p>
+                </div>
+              ) : null;
+            })()}
+
             {/* 요약 카드 */}
             <div className="grid grid-cols-2 gap-3">
               <div className="glass rounded-xl p-4 text-center">
-                <div className="text-xs text-gbus-text-dim mb-1">총 수입</div>
+                <div className="text-xs text-gbus-text-dim mb-1">총 수입 ({incomeDays}일)</div>
                 <div className="text-lg font-bold text-gbus-primary-light">
                   {totalDriverIncome.toLocaleString()} T
                 </div>

@@ -144,6 +144,7 @@ export interface SessionDriver {
   session_id: string;
   user_id: string;
   role: "main" | "sub";
+  revenue_share_pct: number;
   created_at: string;
   // joined
   user?: User;

@@ -13,7 +13,7 @@ export function Header() {
   const pathname = usePathname();
   const supabase = createClient();
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -27,11 +27,11 @@ export function Header() {
     setMenuOpen(false);
   }, [pathname]);
 
-  // 메뉴 외부 클릭 시 닫기
+  // 메뉴 외부 클릭 시 닫기 (header 전체를 ref로 감싸서 드롭다운 포함)
   useEffect(() => {
     if (!menuOpen) return;
     const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
     };
@@ -52,7 +52,7 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 glass border-b border-gbus-border/30">
+      <header ref={headerRef} className="sticky top-0 z-40 glass border-b border-gbus-border/30">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           {/* 로고 */}
           <Link href={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2.5 group shrink-0">
@@ -106,7 +106,7 @@ export function Header() {
           </nav>
 
           {/* Mobile — 1024px 미만: 닉네임 + 햄버거 */}
-          <div className="flex lg:hidden items-center gap-2" ref={menuRef}>
+          <div className="flex lg:hidden items-center gap-2">
             {loading ? (
               <div className="w-12 h-6 rounded shimmer" />
             ) : isLoggedIn ? (
