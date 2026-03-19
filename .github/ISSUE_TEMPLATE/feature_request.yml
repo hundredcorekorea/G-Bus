@@ -1,0 +1,27 @@
+name: "기능 요청"
+description: "새로운 기능이나 개선 아이디어를 제안해주세요"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: "어떤 기능인가요?"
+      description: "원하는 기능을 설명해주세요"
+      placeholder: "예: 기사가 버스 완료 후 수입 통계를 그래프로 볼 수 있으면 좋겠습니다"
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: "왜 필요한가요?"
+      description: "이 기능이 있으면 뭐가 좋아지는지"
+      placeholder: "예: 지금은 수입을 일일이 계산해야 해서 불편합니다"
+    validations:
+      required: false
+  - type: textarea
+    id: mockup
+    attributes:
+      label: "참고 이미지 / 레퍼런스"
+      description: "비슷한 앱 스크린샷이나 그림이 있다면 붙여주세요"
+    validations:
+      required: false
