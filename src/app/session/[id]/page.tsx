@@ -528,10 +528,11 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                     수정
                   </button>
                 )}
-                {isAdminOrMod && (session.status === "waiting" || session.status === "cancelled") && (
+                {isAdminOrMod && (
                   <button
                     onClick={async () => {
-                      if (!confirm("정말 이 세션을 삭제하시겠습니까?")) return;
+                      const statusWarning = session.status === "running" ? "\n⚠️ 현재 운행 중인 세션입니다!" : "";
+                      if (!confirm(`정말 이 세션을 삭제하시겠습니까?${statusWarning}`)) return;
                       const { error } = await supabase.from("bus_sessions").delete().eq("id", sessionId);
                       if (error) { toast("삭제 실패: " + error.message, "error"); return; }
                       toast("세션이 삭제되었습니다.", "success");
