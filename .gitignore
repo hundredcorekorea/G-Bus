@@ -43,3 +43,13 @@ next-env.d.ts
 .vercel
 client_secret_*.json
 graphicImage/
+
+# secrets / credentials
+*.key
+*.pem
+*.p12
+*credentials*.json
+*secret*.json
+*token*.json
+*.pkl
+*_cookies*
