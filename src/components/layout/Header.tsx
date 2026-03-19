@@ -35,8 +35,8 @@ export function Header() {
         setMenuOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
   }, [menuOpen]);
 
   const navLinks = isLoggedIn

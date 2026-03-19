@@ -43,6 +43,19 @@ interface IncomeSummary {
   session_count: number;
 }
 
+interface SessionIncomeDetail {
+  session_id: string;
+  title: string;
+  dungeon_name: string;
+  price_t: number;
+  passenger_count: number;
+  revenue_share_pct: number;
+  driver_role: string;
+  raw_income: number;
+  my_income: number;
+  completed_at: string;
+}
+
 interface CustomerStat {
   customer_id: string;
   game_nickname: string;
@@ -76,6 +89,8 @@ export default function DriverPage() {
   const [incomeSummary, setIncomeSummary] = useState<IncomeSummary[]>([]);
   const [incomeDays, setIncomeDays] = useState<7 | 30 | 90>(30);
   const [incomeLoading, setIncomeLoading] = useState(false);
+  const [sessionDetails, setSessionDetails] = useState<SessionIncomeDetail[]>([]);
+  const [showDetails, setShowDetails] = useState(false);
 
   // Tab 3: 승객 분석
   const [passengerData, setPassengerData] = useState<PassengerRatio[]>([]);
@@ -161,11 +176,12 @@ export default function DriverPage() {
   const fetchIncome = useCallback(async () => {
     if (!user) return;
     setIncomeLoading(true);
-    const { data } = await supabase.rpc("get_driver_income_summary", {
-      p_driver_id: user.id,
-      p_days: incomeDays,
-    });
-    setIncomeSummary((data as IncomeSummary[]) || []);
+    const [summaryRes, detailRes] = await Promise.all([
+      supabase.rpc("get_driver_income_summary", { p_driver_id: user.id, p_days: incomeDays }),
+      supabase.rpc("get_driver_session_details", { p_driver_id: user.id, p_days: incomeDays }),
+    ]);
+    setIncomeSummary((summaryRes.data as IncomeSummary[]) || []);
+    setSessionDetails((detailRes.data as SessionIncomeDetail[]) || []);
     setIncomeLoading(false);
   }, [user, incomeDays, supabase]);
 
@@ -487,6 +503,57 @@ export default function DriverPage() {
                       <Bar dataKey="total_income" fill="rgba(124,109,240,0.7)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            {/* 세션별 수입 상세 */}
+            <div className="glass rounded-2xl p-6">
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                className="w-full flex items-center justify-between text-sm font-semibold text-gbus-text-muted"
+              >
+                <span>세션별 수입 내역 ({sessionDetails.length}건)</span>
+                <svg className={`w-4 h-4 transition-transform ${showDetails ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showDetails && (
+                <div className="mt-4 space-y-2">
+                  {sessionDetails.length === 0 ? (
+                    <p className="text-sm text-gbus-text-dim text-center py-4">완료된 세션이 없습니다.</p>
+                  ) : (
+                    sessionDetails.map((s) => (
+                      <div key={s.session_id} className="bg-gbus-surface-light/20 border border-gbus-border/20 rounded-xl p-3.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{s.title}</div>
+                            <div className="text-xs text-gbus-text-dim mt-0.5">
+                              {s.dungeon_name.replace(/,/g, " ")} · {s.passenger_count}명
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-sm font-bold text-gbus-primary-light">
+                              {Number(s.my_income).toLocaleString()} T
+                            </div>
+                            {s.revenue_share_pct < 100 && (
+                              <div className="text-[10px] text-gbus-text-dim">
+                                {Number(s.raw_income).toLocaleString()}T × {s.revenue_share_pct}%
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant={s.driver_role === "main" ? "primary" : "warning"}>
+                            {s.driver_role === "main" ? "메인" : "보조"}
+                          </Badge>
+                          <span className="text-[10px] text-gbus-text-dim">
+                            {new Date(s.completed_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>
