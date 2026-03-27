@@ -45,7 +45,7 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<(BusSession & { driver: User })[]>([]);
   const [myReservations, setMyReservations] = useState<(Reservation & { bus_session: BusSession })[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeBoard, setActiveBoard] = useState<BoardType>("party");
+  const [activeBoard, setActiveBoard] = useState<BoardType>("mass_bus");
   const [selectedDungeons, setSelectedDungeons] = useState<Set<string>>(new Set());
   const supabase = createClient();
 
@@ -64,7 +64,7 @@ export default function DashboardPage() {
                 .select("*, bus_session:bus_sessions(*)")
                 .eq("user_id", user.id)
                 .in("status", ["waiting", "called", "pending"])
-                .order("created_at", { ascending: false })
+                .order("created_at", { ascending: true })
             : Promise.resolve({ data: [] }),
         ]);
 
@@ -168,15 +168,16 @@ export default function DashboardPage() {
     <div className="min-h-screen">
       <Header />
       <ToastContainer />
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {/* 내 예약 */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+        {/* 내 예약 (Sidebar) */}
         {myReservations.length > 0 && (
-          <section className="mb-8 animate-fade-up">
+          <aside className="w-full lg:w-[260px] shrink-0 lg:sticky lg:top-24 order-1 lg:order-2 animate-fade-up">
             <h2 className="text-lg font-bold mb-4 flex items-center gap-2.5">
               <span className="w-1.5 h-5 bg-gbus-accent rounded-full" />
               내 예약
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
               {myReservations.map((r) => (
                 <Link key={r.id} href={`/session/${r.session_id}`}>
                   <div className="glass rounded-2xl p-4 transition-all duration-300 hover:-translate-y-1 hover:border-gbus-accent/30 hover:shadow-[0_8px_32px_rgba(0,206,201,0.08)] cursor-pointer border-glow">
@@ -208,10 +209,11 @@ export default function DashboardPage() {
                 </Link>
               ))}
             </div>
-          </section>
+          </aside>
         )}
 
-        {/* 모집 게시판 */}
+        {/* 메인 콘텐츠 영역: 모집 게시판 */}
+        <div className="flex-1 w-full min-w-0 order-2 lg:order-1">
         <section className="animate-fade-up-d1">
           <div className="flex items-center justify-between mb-5 gap-2">
             <h2 className="text-lg font-bold flex items-center gap-2.5 shrink-0">
@@ -223,59 +225,7 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {/* 게시판 탭 */}
-          <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-hide">
-            {BOARDS.map((board) => (
-              <button
-                key={board.key}
-                onClick={() => switchBoard(board.key)}
-                className={`px-3.5 py-1.5 text-sm font-medium rounded-full whitespace-nowrap transition-all duration-200 ${
-                  activeBoard === board.key
-                    ? "bg-gbus-primary text-white shadow-[0_2px_12px_rgba(108,92,231,0.3)]"
-                    : "glass text-gbus-text-muted hover:text-gbus-text hover:bg-gbus-surface-light/60"
-                }`}
-              >
-                {board.label}
-                {!loading && (
-                  <span className={`ml-1.5 text-xs ${activeBoard === board.key ? "text-white/70" : "text-gbus-text-dim"}`}>
-                    {boardCounts[board.key]}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* 던전 필터 칩 */}
-          <div className="flex flex-wrap items-center gap-1.5 mb-4">
-            {currentBoard.dungeons.filter((name) => {
-              if (!profile?.upper_dungeon_verified && UPPER_DUNGEON_NAMES.includes(name)) return false;
-              if (!profile?.upper_field_verified && UPPER_FIELD_NAMES.includes(name)) return false;
-              return true;
-            }).map((name) => (
-              <button
-                key={name}
-                onClick={() => toggleDungeon(name)}
-                className={`px-2.5 py-1 text-xs rounded-lg border transition-all duration-200 ${
-                  selectedDungeons.has(name)
-                    ? "bg-gbus-accent/15 text-gbus-accent border-gbus-accent/30 shadow-[0_0_8px_rgba(0,206,201,0.1)]"
-                    : "bg-gbus-surface-light/40 text-gbus-text-muted border-gbus-border/40 hover:border-gbus-accent/20 hover:text-gbus-text"
-                }`}
-              >
-                {name}
-                {selectedDungeons.has(name) && (
-                  <span className="ml-1 text-gbus-accent/60">&times;</span>
-                )}
-              </button>
-            ))}
-            {selectedDungeons.size > 0 && (
-              <button
-                onClick={() => setSelectedDungeons(new Set())}
-                className="px-2.5 py-1 text-xs text-gbus-danger/80 hover:text-gbus-danger transition-colors"
-              >
-                초기화
-              </button>
-            )}
-          </div>
+          {/* 게시판 탭 및 던전 필터 칩 삭제됨 (대량모집 전용) */}
 
           {/* 세션 목록 */}
           {loading ? (
@@ -384,6 +334,8 @@ export default function DashboardPage() {
         </section>
 
         <PromoCard placement="waiting" className="mt-8" />
+        </div>
+        </div>
       </main>
     </div>
   );

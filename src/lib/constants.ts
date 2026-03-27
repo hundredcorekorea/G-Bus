@@ -58,10 +58,6 @@ export interface BoardConfig {
 }
 
 export const BOARDS: BoardConfig[] = [
-  { key: "party", label: "공팟 모집", dungeons: DUNGEON_NAMES, postTypes: ["party"] },
-  { key: "bus", label: "승객 모집", dungeons: DUNGEON_NAMES, postTypes: ["bus"] },
-  { key: "field", label: "필드파티", dungeons: FIELD_NAMES, postTypes: ["field_party"] },
-  { key: "exp", label: "경팟", dungeons: EXP_NAMES, postTypes: ["exp_party"] },
   { key: "mass_bus", label: "대량 모집", dungeons: MASS_BUS_NAMES, postTypes: ["mass_bus", "barrack_bus"] },
 ];
 

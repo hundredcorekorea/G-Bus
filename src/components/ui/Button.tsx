@@ -2,7 +2,7 @@
 
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
-type Variant = "primary" | "secondary" | "danger" | "ghost" | "accent";
+type Variant = "primary" | "secondary" | "danger" | "ghost" | "accent" | "warning";
 type Size = "sm" | "md" | "lg";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -22,6 +22,8 @@ const variantClasses: Record<Variant, string> = {
     "bg-transparent hover:bg-gbus-surface-light/60 text-gbus-text-muted hover:text-gbus-text",
   accent:
     "bg-gradient-to-r from-gbus-accent to-gbus-accent-light text-gbus-bg shadow-[0_2px_12px_rgba(0,210,198,0.3)] hover:shadow-[0_4px_20px_rgba(0,210,198,0.45)] hover:brightness-110",
+  warning:
+    "bg-gbus-warning/15 hover:bg-gbus-warning/25 text-gbus-warning border border-gbus-warning/25 hover:border-gbus-warning/50",
 };
 
 const sizeClasses: Record<Size, string> = {
