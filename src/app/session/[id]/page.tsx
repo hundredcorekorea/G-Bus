@@ -531,7 +531,9 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
     <div className="min-h-screen">
       <Header />
       <ToastContainer />
-      <main className="max-w-7xl mx-auto px-4 py-8 animate-fade-up">\n      <div className="flex flex-col lg:flex-row gap-8 items-start">\n        <div className="flex-1 w-full min-w-0 order-2 lg:order-1 space-y-5">
+      <main className="max-w-7xl mx-auto px-4 py-8 animate-fade-up">
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        <div className="flex-1 w-full min-w-0 order-2 lg:order-1 space-y-5">
         {/* 세션 헤더 */}
         <div className="glass rounded-2xl p-4 sm:p-6 mb-5">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -1031,7 +1033,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
           )}
         </div>
 
-        <PromoCard placement="waiting" className="mt-6" />\n
+        <PromoCard placement="waiting" className="mt-6" />
         </div>
         <aside className="w-full lg:w-[320px] shrink-0 lg:sticky lg:top-24 order-1 lg:order-2 space-y-5 animate-fade-up">
 
