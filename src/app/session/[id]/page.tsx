@@ -46,6 +46,8 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const [driverApps, setDriverApps] = useState<(DriverApplication & { driver: { nickname: string; game_nickname: string } })[]>([]);
   const [driverAppMsg, setDriverAppMsg] = useState("");
   const [applyingDriver, setApplyingDriver] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const supabase = createClient();
 
   const isMassBus = session?.post_type === "mass_bus";
@@ -177,6 +179,38 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
     fetchDrivers();
   };
 
+  
+    
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (id !== dragOverId) setDragOverId(id);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    setDragOverId(null);
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      return;
+    }
+    
+    const draggedRes = reservations.find((r) => r.id === draggedId);
+    const targetRes = reservations.find((r) => r.id === targetId);
+    if (!draggedRes || !targetRes) return;
+    
+    const temp = draggedRes.queue_no;
+    await supabase.from("reservations").upsert([
+      { ...draggedRes, queue_no: targetRes.queue_no },
+      { ...targetRes, queue_no: temp }
+    ]);
+    setDraggedId(null);
+  };
   const handleBid = async () => {
     if (!bidPrice) { toast("가격을 입력하세요.", "error"); return; }
     setBidding(true);
@@ -497,7 +531,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
     <div className="min-h-screen">
       <Header />
       <ToastContainer />
-      <main className="max-w-4xl mx-auto px-4 py-8 animate-fade-up">
+      <main className="max-w-7xl mx-auto px-4 py-8 animate-fade-up">\n      <div className="flex flex-col lg:flex-row gap-8 items-start">\n        <div className="flex-1 w-full min-w-0 order-2 lg:order-1 space-y-5">
         {/* 세션 헤더 */}
         <div className="glass rounded-2xl p-4 sm:p-6 mb-5">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -623,100 +657,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
               </div>
             )}
 
-            {/* 배럭 캐릭터 등록/해제 */}
-            {session.status === "waiting" && (
-              <div className="border-t border-gbus-border/20 pt-4">
-                <div className="text-xs font-bold text-gbus-text-muted mb-2.5 uppercase tracking-wider">배럭 캐릭터 대기열 등록</div>
-                {barracks.length === 0 ? (
-                  <p className="text-sm text-gbus-text-muted">
-                    등록된 배럭이 없습니다. <a href="/barrack" className="text-gbus-primary hover:text-gbus-primary-light transition-colors font-medium">배럭 관리</a>에서 추가하세요.
-                  </p>
-                ) : (
-                  <>
-                    {minDigiLv > 0 && (
-                      <p className="text-xs text-gbus-warning mb-2 font-medium">이 던전은 하인 Lv.{minDigiLv} 이상만 입장 가능합니다</p>
-                    )}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
-                      {barracks.map((b) => {
-                        const inQueue = reservations.some((r) => r.char_name === b.char_name && r.user_id === user?.id);
-                        const lvBlocked = minDigiLv > 0 && (b.digi_lv == null || b.digi_lv < minDigiLv);
-                        const disabled = inQueue || lvBlocked;
-                        const sel = selectedBarracks.includes(b.char_name);
-                        return (
-                          <button key={b.id} disabled={disabled} onClick={() => setSelectedBarracks((p) => sel ? p.filter((n) => n !== b.char_name) : [...p, b.char_name])}
-                            className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer text-left ${
-                              disabled ? "bg-gbus-bg/40 border-gbus-border/20 text-gbus-text-dim cursor-not-allowed opacity-40"
-                              : sel ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light shadow-[0_0_10px_rgba(108,92,231,0.12)]"
-                              : "border-gbus-border/40 text-gbus-text-muted hover:border-gbus-primary/30 hover:text-gbus-text"
-                            }`}>
-                            <span>{b.char_name}{inQueue ? " (등록됨)" : lvBlocked ? " (레벨 부족)" : ""}</span>
-                            {(b.tamer_lv != null || b.digi_lv != null) && (
-                              <span className="flex items-center gap-1 mt-0.5">
-                                {b.tamer_lv != null && <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-success/10 text-gbus-success border border-gbus-success/30">{b.tamer_lv}</span>}
-                                {b.digi_lv != null && <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-accent-light/10 text-gbus-accent-light border border-gbus-accent-light/30">{b.digi_lv}</span>}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <Button onClick={handleHostRegisterBarracks} loading={reserving} disabled={selectedBarracks.length === 0} size="sm">
-                      {selectedBarracks.length}개 대기열 등록
-                    </Button>
-                  </>
-                )}
-
-                {/* 등록된 내 캐릭터 목록 (제거 가능) */}
-                {myReservations.filter((r) => r.status === "waiting").length > 0 && (
-                  <div className="mt-3">
-                    <div className="text-xs font-bold text-gbus-text-dim mb-1.5">등록된 내 캐릭터</div>
-                    <div className="space-y-1">
-                      {myReservations.filter((r) => r.status === "waiting").map((r) => (
-                        <div key={r.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gbus-primary/5 border border-gbus-primary/10 text-sm">
-                          <span className="font-medium">#{r.queue_no} {r.char_name}</span>
-                          <button onClick={() => handleHostRemoveChar(r.id)} className="text-xs text-gbus-danger/70 hover:text-gbus-danger transition-colors">&times; 제거</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 기사 신청 관리 */}
-            <div className="border-t border-gbus-border/20 pt-4 mt-4">
-              <div className="text-xs font-bold text-gbus-text-muted mb-2.5 uppercase tracking-wider">
-                기사 신청 ({driverApps.length}건)
-                {acceptedDriverApp && <span className="text-gbus-success ml-2">수락됨</span>}
-              </div>
-              {driverApps.length === 0 ? (
-                <p className="text-sm text-gbus-text-dim">아직 기사 신청이 없습니다.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {driverApps.map((app) => (
-                    <div key={app.id} className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm ${
-                      app.status === "accepted" ? "bg-gbus-success/8 border border-gbus-success/20"
-                      : app.status === "rejected" ? "bg-gbus-bg/40 text-gbus-text-dim opacity-50 border border-gbus-border/10"
-                      : "bg-gbus-surface-light/20 border border-gbus-border/20"
-                    }`}>
-                      <div>
-                        <span className="font-medium">{app.driver?.game_nickname || app.driver?.nickname}</span>
-                        {app.message && <span className="text-gbus-text-dim ml-2 text-xs">- {app.message}</span>}
-                        {app.status === "accepted" && <Badge variant="success">수락</Badge>}
-                        {app.status === "rejected" && <Badge variant="danger">거절</Badge>}
-                      </div>
-                      {app.status === "pending" && (
-                        <div className="flex gap-1.5">
-                          <Button size="sm" onClick={() => handleDriverAppAction(app.id, "accepted")}>수락</Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDriverAppAction(app.id, "rejected")}>거절</Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+</div>
         )}
 
         {/* ===== mass_bus: 수락된 기사 컨트롤 (호스트가 아닌 기사) ===== */}
@@ -888,230 +829,6 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
           </div>
         )}
 
-        {/* ===== mass_bus: 기사 신청 패널 (기사인증 유저용) ===== */}
-        {isMassBus && !isHost && !isDriver && profile?.driver_verified && session.status === "waiting" && (
-          <div className="glass rounded-2xl p-6 mb-5">
-            <h3 className="font-bold mb-4 flex items-center gap-2.5">
-              <span className="w-1.5 h-4 bg-gbus-accent rounded-full" />기사 신청
-            </h3>
-            {myDriverApp ? (
-              <div className={`px-4 py-3 rounded-xl text-sm ${
-                myDriverApp.status === "accepted" ? "bg-gbus-success/8 border border-gbus-success/20"
-                : myDriverApp.status === "rejected" ? "bg-gbus-danger/8 border border-gbus-danger/20"
-                : "bg-gbus-warning/8 border border-gbus-warning/20"
-              }`}>
-                <span className="font-semibold">
-                  {myDriverApp.status === "accepted" ? "기사 신청이 수락되었습니다!" :
-                   myDriverApp.status === "rejected" ? "기사 신청이 거절되었습니다." :
-                   "기사 신청 대기 중..."}
-                </span>
-              </div>
-            ) : !massBusMinMet ? (
-              <div className="text-sm text-gbus-text-dim">
-                필수 인원({session.min_count}명)이 충족된 후 기사 신청이 가능합니다.
-                <span className="ml-1 text-gbus-warning font-medium">현재 {session.current_count}명</span>
-              </div>
-            ) : acceptedDriverApp ? (
-              <div className="text-sm text-gbus-text-dim">이미 기사가 배정되었습니다.</div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <input
-                  type="text"
-                  value={driverAppMsg}
-                  onChange={(e) => setDriverAppMsg(e.target.value)}
-                  placeholder="한마디 (선택)"
-                  className="px-4 py-2.5 bg-gbus-bg/40 border border-gbus-border/40 rounded-xl text-sm text-gbus-text placeholder:text-gbus-text-dim focus:outline-none focus:border-gbus-primary focus:ring-2 focus:ring-gbus-primary/15 transition-all"
-                />
-                <Button onClick={handleApplyDriver} loading={applyingDriver} className="btn-shine">기사 신청</Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ===== mass_bus: 일반 유저 참가 신청 ===== */}
-        {isMassBus && !isHost && !isDriver && profile?.verified && (session.status === "waiting" || session.status === "running") && (
-          <div className="glass rounded-2xl p-6 mb-5">
-            {myReservations.length > 0 ? (
-              <div className="bg-gbus-primary/8 border border-gbus-primary/20 rounded-xl p-4">
-                <p className="text-sm font-semibold text-gbus-primary-light">참가 신청 완료</p>
-                <p className="text-xs text-gbus-text-dim mt-1">{myReservations.map((r) => r.char_name).join(", ")}</p>
-              </div>
-            ) : !showReservePanel ? (
-              <Button onClick={() => setShowReservePanel(true)} className="w-full btn-shine" size="lg">참가 신청</Button>
-            ) : (
-              <div>
-                <h3 className="font-bold mb-4 flex items-center gap-2.5">
-                  <span className="w-1.5 h-4 bg-gbus-primary rounded-full" />캐릭터 선택
-                </h3>
-                {barracks.length === 0 ? (
-                  <p className="text-sm text-gbus-text-muted mb-3">
-                    등록된 배럭이 없습니다. <a href="/barrack" className="text-gbus-primary hover:text-gbus-primary-light transition-colors font-medium">배럭 관리</a>에서 추가하세요.
-                  </p>
-                ) : (
-                  <>
-                    {minDigiLv > 0 && (
-                      <p className="text-xs text-gbus-warning mb-2 font-medium">이 던전은 하인 Lv.{minDigiLv} 이상만 입장 가능합니다</p>
-                    )}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
-                      {barracks.map((b) => {
-                        const done = reservations.some((r) => r.char_name === b.char_name && r.user_id === user?.id);
-                        const lvBlocked = minDigiLv > 0 && (b.digi_lv == null || b.digi_lv < minDigiLv);
-                        const disabled = done || lvBlocked;
-                        const sel = selectedBarracks.includes(b.char_name);
-                        return (
-                          <button key={b.id} disabled={disabled} onClick={() => setSelectedBarracks((p) => sel ? p.filter((n) => n !== b.char_name) : [...p, b.char_name])}
-                            className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer text-left ${
-                              disabled ? "bg-gbus-bg/40 border-gbus-border/20 text-gbus-text-dim cursor-not-allowed opacity-40"
-                              : sel ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light shadow-[0_0_10px_rgba(108,92,231,0.12)]"
-                              : "border-gbus-border/40 text-gbus-text-muted hover:border-gbus-primary/30 hover:text-gbus-text"
-                            }`}>
-                            <span>{b.char_name}{done ? " (등록됨)" : lvBlocked ? " (레벨 부족)" : ""}</span>
-                            {(b.tamer_lv != null || b.digi_lv != null) && (
-                              <span className="flex items-center gap-1 mt-0.5">
-                                {b.tamer_lv != null && <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-success/10 text-gbus-success border border-gbus-success/30">{b.tamer_lv}</span>}
-                                {b.digi_lv != null && <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-accent-light/10 text-gbus-accent-light border border-gbus-accent-light/30">{b.digi_lv}</span>}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-                <div className="flex gap-2">
-                  <Button onClick={handleReserve} loading={reserving} disabled={selectedBarracks.length === 0} className="flex-1 btn-shine">
-                    {selectedBarracks.length}개 참가 신청
-                  </Button>
-                  <Button variant="ghost" onClick={() => { setShowReservePanel(false); setSelectedBarracks([]); }}>취소</Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 승객 예약 (mass_bus가 아닌 경우) */}
-        {!isMassBus && !isDriver && profile?.verified && (session.status === "waiting" || session.status === "running") && (
-          <div className="glass rounded-2xl p-6 mb-5">
-            {myPending.length > 0 && (
-              <div className="bg-gbus-warning/8 border border-gbus-warning/20 rounded-xl p-4 mb-4">
-                <p className="text-sm font-semibold text-gbus-warning">참여 신청 완료 — 파장 수락 대기 중</p>
-                <p className="text-xs text-gbus-text-dim mt-1">{myPending.map((r) => r.char_name).join(", ")}</p>
-              </div>
-            )}
-            {!showReservePanel ? (
-              <Button onClick={() => setShowReservePanel(true)} className="w-full btn-shine" size="lg">{isParty ? "참여 신청" : "예약하기"}</Button>
-            ) : (
-              <div>
-                <h3 className="font-bold mb-4 flex items-center gap-2.5">
-                  <span className="w-1.5 h-4 bg-gbus-primary rounded-full" />캐릭터 선택
-                </h3>
-                {barracks.length === 0 ? (
-                  <p className="text-sm text-gbus-text-muted mb-3">
-                    등록된 배럭이 없습니다. <a href="/barrack" className="text-gbus-primary hover:text-gbus-primary-light transition-colors font-medium">배럭 관리</a>에서 추가하세요.
-                  </p>
-                ) : (
-                  <>
-                  {minDigiLv > 0 && (
-                    <p className="text-xs text-gbus-warning mb-2 font-medium">이 던전은 하인 Lv.{minDigiLv} 이상만 입장 가능합니다</p>
-                  )}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
-                    {barracks.map((b) => {
-                      const done = reservations.some((r) => r.char_name === b.char_name && r.user_id === user?.id && !r.is_beginner);
-                      const lvBlocked = minDigiLv > 0 && (b.digi_lv == null || b.digi_lv < minDigiLv);
-                      const disabled = (done && !isBeginner) || lvBlocked;
-                      const sel = selectedBarracks.includes(b.char_name);
-                      return (
-                        <button key={b.id} disabled={disabled} onClick={() => setSelectedBarracks((p) => sel ? p.filter((n) => n !== b.char_name) : [...p, b.char_name])}
-                          className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer text-left ${
-                            disabled ? "bg-gbus-bg/40 border-gbus-border/20 text-gbus-text-dim cursor-not-allowed opacity-40"
-                            : sel ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light shadow-[0_0_10px_rgba(108,92,231,0.12)]"
-                            : "border-gbus-border/40 text-gbus-text-muted hover:border-gbus-primary/30 hover:text-gbus-text"
-                          }`}>
-                          <span>{b.char_name}{done && !isBeginner ? " (예약됨)" : lvBlocked ? " (레벨 부족)" : ""}</span>
-                          {(b.tamer_lv != null || b.digi_lv != null) && (
-                            <span className="flex items-center gap-1 mt-0.5">
-                              {b.tamer_lv != null && (
-                                <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-success/10 text-gbus-success border border-gbus-success/30">
-                                  {b.tamer_lv}
-                                </span>
-                              )}
-                              {b.digi_lv != null && (
-                                <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-accent-light/10 text-gbus-accent-light border border-gbus-accent-light/30">
-                                  {b.digi_lv}
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {/* 초행 체크박스 */}
-                  <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={isBeginner}
-                      onChange={(e) => { setIsBeginner(e.target.checked); setSelectedBarracks([]); }}
-                      className="w-4 h-4 rounded border-gbus-border accent-gbus-primary"
-                    />
-                    <span className="text-sm text-gbus-text-muted">초행 (같은 캐릭터 중복 등록)</span>
-                  </label>
-                  </>
-                )}
-                {/* 포지션 선택 (파티만) */}
-                {isParty && (
-                  <div className="mb-4">
-                    <label className="text-sm font-semibold text-gbus-text-muted block mb-2.5">
-                      포지션 <span className="text-gbus-text-dim font-normal">(미선택 = 올포지션)</span>
-                    </label>
-                    <div className="flex gap-2">
-                      {(Object.entries(POSITIONS) as [Position, typeof POSITIONS[Position]][]).map(([key, { label, color }]) => {
-                        const sel = selectedPositions.includes(key);
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => togglePosition(key)}
-                            className={`flex-1 py-2.5 text-sm rounded-xl transition-all duration-300 cursor-pointer border font-semibold ${
-                              sel
-                                ? color === "danger"
-                                  ? "bg-gbus-danger/15 border-gbus-danger/40 text-gbus-danger shadow-[0_0_12px_rgba(255,118,117,0.15)]"
-                                  : color === "accent"
-                                    ? "bg-gbus-accent/15 border-gbus-accent/40 text-gbus-accent shadow-[0_0_12px_rgba(0,206,201,0.15)]"
-                                    : "bg-gbus-success/15 border-gbus-success/40 text-gbus-success shadow-[0_0_12px_rgba(0,184,148,0.15)]"
-                                : "border-gbus-border/40 text-gbus-text-dim hover:border-gbus-text-dim hover:text-gbus-text-muted"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {selectedPositions.length === 0 && (
-                      <p className="text-xs text-gbus-primary-light mt-2 font-medium">올포지션으로 참여합니다</p>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <Button onClick={handleReserve} loading={reserving} disabled={selectedBarracks.length === 0} className="flex-1 btn-shine">
-                    {isParty ? `${selectedBarracks.length}개 참여 신청` : `${selectedBarracks.length}개 예약`}
-                  </Button>
-                  <Button variant="ghost" onClick={() => { setShowReservePanel(false); setSelectedBarracks([]); setSelectedPositions([]); }}>취소</Button>
-                </div>
-              </div>
-            )}
-            {!isParty && myNextWaiting && (
-              <div className="mt-4 bg-gbus-bg/40 rounded-xl p-4 text-sm border border-gbus-border/20">
-                <span className="text-gbus-text-dim">내 순번:</span>{" "}
-                <span className="font-bold text-gbus-primary-light">#{myNextWaiting.queue_no}</span>
-                <span className="text-gbus-text-dim ml-1">({myNextWaiting.char_name})</span>
-                <span className="text-gbus-text-dim ml-3">| ~{estimatedMinutes}분</span>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* 역경매 */}
         {session.price_type === "auction" && (
           <div className="glass rounded-2xl p-6 mb-5">
@@ -1217,13 +934,21 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                 const canSee = canControl || mine;
                 const displayName = canSee ? r.char_name : `승객 #${idx + 1}`;
                 return (
-                  <div key={r.id} className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all ${
+                  <div key={r.id}
+                    draggable={canControl && r.status === "waiting" && !isParty}
+                    onDragStart={canControl && r.status === "waiting" && !isParty ? (e) => handleDragStart(e, r.id) : undefined}
+                    onDragOver={canControl && r.status === "waiting" && !isParty ? (e) => handleDragOver(e, r.id) : undefined}
+                    onDragLeave={() => setDragOverId(null)}
+                    onDrop={canControl && r.status === "waiting" && !isParty ? (e) => handleDrop(e, r.id) : undefined}
+                    onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
+                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all ${
                     r.status === "called" ? "bg-gbus-accent/8 border border-gbus-accent/20 shadow-[0_0_16px_rgba(0,206,201,0.06)]"
                     : r.status === "done" ? "bg-gbus-bg/30 text-gbus-text-dim"
                     : r.status === "noshow" ? "bg-gbus-danger/5 text-gbus-text-dim line-through opacity-40"
                     : mine ? "bg-gbus-primary/6 border border-gbus-primary/15"
+                    : draggedId === r.id ? "opacity-40 scale-95 border-2 border-dashed border-gbus-primary bg-gbus-primary/5"
                     : "bg-gbus-surface-light/20 border border-transparent hover:bg-gbus-surface-light/30"
-                  }`}>
+                  } ${dragOverId === r.id ? "border-t-2 border-t-gbus-primary shadow-[0_-4px_12px_rgba(108,92,231,0.2)]" : ""} ${canControl && r.status === "waiting" && !isParty ? "cursor-grab active:cursor-grabbing hover:shadow-md group" : ""}`}>
                     <div className="flex items-center gap-3">
                       {!isParty && <span className="text-gbus-text-dim w-8 font-mono text-xs font-medium">#{r.queue_no}</span>}
                       {canSee ? (
@@ -1260,17 +985,17 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
                     </div>
                     <div className="flex items-center gap-2">
                       {r.status === "waiting" && canControl && !isParty && (
-                        <div className="flex flex-col gap-0.5 mr-1">
+                        <div className="flex flex-col gap-0 mr-2 opacity-60 hover:opacity-100 transition-opacity bg-gbus-bg/50 rounded-md border border-gbus-border/30 overflow-hidden">
                           <button
                             onClick={() => handleSwapQueue(r.id, "up")}
                             disabled={(() => { const wl = activeReservations.filter((ar) => ar.status === "waiting"); return wl.indexOf(r) === 0; })()}
-                            className="text-[10px] text-gbus-text-dim hover:text-gbus-primary-light transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed px-1 leading-none"
+                            className="text-[11px] text-gbus-text-dim hover:text-gbus-primary hover:bg-gbus-primary/10 transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed px-1.5 py-0.5 leading-none"
                             title="위로"
                           >&#x25B2;</button>
                           <button
                             onClick={() => handleSwapQueue(r.id, "down")}
                             disabled={(() => { const wl = activeReservations.filter((ar) => ar.status === "waiting"); return wl.indexOf(r) === wl.length - 1; })()}
-                            className="text-[10px] text-gbus-text-dim hover:text-gbus-primary-light transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed px-1 leading-none"
+                            className="text-[11px] text-gbus-text-dim hover:text-gbus-primary hover:bg-gbus-primary/10 transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed px-1.5 py-0.5 border-t border-gbus-border/20 leading-none"
                             title="아래로"
                           >&#x25BC;</button>
                         </div>
@@ -1306,7 +1031,338 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
           )}
         </div>
 
-        <PromoCard placement="waiting" className="mt-6" />
+        <PromoCard placement="waiting" className="mt-6" />\n
+        </div>
+        <aside className="w-full lg:w-[320px] shrink-0 lg:sticky lg:top-24 order-1 lg:order-2 space-y-5 animate-fade-up">
+
+        {isMassBus && isHost && session.status === 'waiting' && (
+          <div className="glass rounded-2xl p-6 mb-5">
+            {/* 배럭 캐릭터 등록/해제 */}
+            {session.status === "waiting" && (
+              <div className="border-t border-gbus-border/20 pt-4">
+                <div className="text-xs font-bold text-gbus-text-muted mb-2.5 uppercase tracking-wider">배럭 캐릭터 대기열 등록</div>
+                {barracks.length === 0 ? (
+                  <p className="text-sm text-gbus-text-muted">
+                    등록된 배럭이 없습니다. <a href="/barrack" className="text-gbus-primary hover:text-gbus-primary-light transition-colors font-medium">배럭 관리</a>에서 추가하세요.
+                  </p>
+                ) : (
+                  <>
+                    {minDigiLv > 0 && (
+                      <p className="text-xs text-gbus-warning mb-2 font-medium">이 던전은 하인 Lv.{minDigiLv} 이상만 입장 가능합니다</p>
+                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 max-h-[250px] overflow-y-auto pr-1">
+                      {barracks.map((b) => {
+                        const inQueue = reservations.some((r) => r.char_name === b.char_name && r.user_id === user?.id);
+                        const lvBlocked = minDigiLv > 0 && (b.digi_lv == null || b.digi_lv < minDigiLv);
+                        const disabled = inQueue || lvBlocked;
+                        const sel = selectedBarracks.includes(b.char_name);
+                        return (
+                          <button key={b.id} disabled={disabled} onClick={() => setSelectedBarracks((p) => sel ? p.filter((n) => n !== b.char_name) : [...p, b.char_name])}
+                            className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer text-left ${
+                              disabled ? "bg-gbus-bg/40 border-gbus-border/20 text-gbus-text-dim cursor-not-allowed opacity-40"
+                              : sel ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light shadow-[0_0_10px_rgba(108,92,231,0.12)]"
+                              : "border-gbus-border/40 text-gbus-text-muted hover:border-gbus-primary/30 hover:text-gbus-text"
+                            }`}>
+                            <span>{b.char_name}{inQueue ? " (등록됨)" : lvBlocked ? " (레벨 부족)" : ""}</span>
+                            {(b.tamer_lv != null || b.digi_lv != null) && (
+                              <span className="flex items-center gap-1 mt-0.5">
+                                {b.tamer_lv != null && <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-success/10 text-gbus-success border border-gbus-success/30">{b.tamer_lv}</span>}
+                                {b.digi_lv != null && <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-accent-light/10 text-gbus-accent-light border border-gbus-accent-light/30">{b.digi_lv}</span>}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <Button onClick={handleHostRegisterBarracks} loading={reserving} disabled={selectedBarracks.length === 0} size="sm">
+                      {selectedBarracks.length}개 대기열 등록
+                    </Button>
+                  </>
+                )}
+
+                {/* 등록된 내 캐릭터 목록 (제거 가능) */}
+                {myReservations.filter((r) => r.status === "waiting").length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-xs font-bold text-gbus-text-dim mb-1.5">등록된 내 캐릭터</div>
+                    <div className="space-y-1">
+                      {myReservations.filter((r) => r.status === "waiting").map((r) => (
+                        <div key={r.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gbus-primary/5 border border-gbus-primary/10 text-sm">
+                          <span className="font-medium">#{r.queue_no} {r.char_name}</span>
+                          <button onClick={() => handleHostRemoveChar(r.id)} className="text-xs text-gbus-danger/70 hover:text-gbus-danger transition-colors">&times; 제거</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 기사 신청 관리 */}
+            <div className="border-t border-gbus-border/20 pt-4 mt-4">
+              <div className="text-xs font-bold text-gbus-text-muted mb-2.5 uppercase tracking-wider">
+                기사 신청 ({driverApps.length}건)
+                {acceptedDriverApp && <span className="text-gbus-success ml-2">수락됨</span>}
+              </div>
+              {driverApps.length === 0 ? (
+                <p className="text-sm text-gbus-text-dim">아직 기사 신청이 없습니다.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {driverApps.map((app) => (
+                    <div key={app.id} className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm ${
+                      app.status === "accepted" ? "bg-gbus-success/8 border border-gbus-success/20"
+                      : app.status === "rejected" ? "bg-gbus-bg/40 text-gbus-text-dim opacity-50 border border-gbus-border/10"
+                      : "bg-gbus-surface-light/20 border border-gbus-border/20"
+                    }`}>
+                      <div>
+                        <span className="font-medium">{app.driver?.game_nickname || app.driver?.nickname}</span>
+                        {app.message && <span className="text-gbus-text-dim ml-2 text-xs">- {app.message}</span>}
+                        {app.status === "accepted" && <Badge variant="success">수락</Badge>}
+                        {app.status === "rejected" && <Badge variant="danger">거절</Badge>}
+                      </div>
+                      {app.status === "pending" && (
+                        <div className="flex gap-1.5">
+                          <Button size="sm" onClick={() => handleDriverAppAction(app.id, "accepted")}>수락</Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDriverAppAction(app.id, "rejected")}>거절</Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          
+          </div>
+        )}
+
+        {/* ===== mass_bus: 기사 신청 패널 (기사인증 유저용) ===== */}
+        {isMassBus && !isHost && !isDriver && profile?.driver_verified && session.status === "waiting" && (
+          <div className="glass rounded-2xl p-6 mb-5">
+            <h3 className="font-bold mb-4 flex items-center gap-2.5">
+              <span className="w-1.5 h-4 bg-gbus-accent rounded-full" />기사 신청
+            </h3>
+            {myDriverApp ? (
+              <div className={`px-4 py-3 rounded-xl text-sm ${
+                myDriverApp.status === "accepted" ? "bg-gbus-success/8 border border-gbus-success/20"
+                : myDriverApp.status === "rejected" ? "bg-gbus-danger/8 border border-gbus-danger/20"
+                : "bg-gbus-warning/8 border border-gbus-warning/20"
+              }`}>
+                <span className="font-semibold">
+                  {myDriverApp.status === "accepted" ? "기사 신청이 수락되었습니다!" :
+                   myDriverApp.status === "rejected" ? "기사 신청이 거절되었습니다." :
+                   "기사 신청 대기 중..."}
+                </span>
+              </div>
+            ) : !massBusMinMet ? (
+              <div className="text-sm text-gbus-text-dim">
+                필수 인원({session.min_count}명)이 충족된 후 기사 신청이 가능합니다.
+                <span className="ml-1 text-gbus-warning font-medium">현재 {session.current_count}명</span>
+              </div>
+            ) : acceptedDriverApp ? (
+              <div className="text-sm text-gbus-text-dim">이미 기사가 배정되었습니다.</div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <input
+                  type="text"
+                  value={driverAppMsg}
+                  onChange={(e) => setDriverAppMsg(e.target.value)}
+                  placeholder="한마디 (선택)"
+                  className="px-4 py-2.5 bg-gbus-bg/40 border border-gbus-border/40 rounded-xl text-sm text-gbus-text placeholder:text-gbus-text-dim focus:outline-none focus:border-gbus-primary focus:ring-2 focus:ring-gbus-primary/15 transition-all"
+                />
+                <Button onClick={handleApplyDriver} loading={applyingDriver} className="btn-shine">기사 신청</Button>
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* ===== mass_bus: 일반 유저 참가 신청 ===== */}
+        {isMassBus && !isHost && !isDriver && profile?.verified && (session.status === "waiting" || session.status === "running") && (
+          <div className="glass rounded-2xl p-6 mb-5">
+            {myReservations.length > 0 ? (
+              <div className="bg-gbus-primary/8 border border-gbus-primary/20 rounded-xl p-4">
+                <p className="text-sm font-semibold text-gbus-primary-light">참가 신청 완료</p>
+                <p className="text-xs text-gbus-text-dim mt-1">{myReservations.map((r) => r.char_name).join(", ")}</p>
+              </div>
+            ) : !showReservePanel ? (
+              <Button onClick={() => setShowReservePanel(true)} className="w-full btn-shine" size="lg">참가 신청</Button>
+            ) : (
+              <div>
+                <h3 className="font-bold mb-4 flex items-center gap-2.5">
+                  <span className="w-1.5 h-4 bg-gbus-primary rounded-full" />캐릭터 선택
+                </h3>
+                {barracks.length === 0 ? (
+                  <p className="text-sm text-gbus-text-muted mb-3">
+                    등록된 배럭이 없습니다. <a href="/barrack" className="text-gbus-primary hover:text-gbus-primary-light transition-colors font-medium">배럭 관리</a>에서 추가하세요.
+                  </p>
+                ) : (
+                  <>
+                    {minDigiLv > 0 && (
+                      <p className="text-xs text-gbus-warning mb-2 font-medium">이 던전은 하인 Lv.{minDigiLv} 이상만 입장 가능합니다</p>
+                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4 max-h-[250px] overflow-y-auto pr-1">
+                      {barracks.map((b) => {
+                        const done = reservations.some((r) => r.char_name === b.char_name && r.user_id === user?.id);
+                        const lvBlocked = minDigiLv > 0 && (b.digi_lv == null || b.digi_lv < minDigiLv);
+                        const disabled = done || lvBlocked;
+                        const sel = selectedBarracks.includes(b.char_name);
+                        return (
+                          <button key={b.id} disabled={disabled} onClick={() => setSelectedBarracks((p) => sel ? p.filter((n) => n !== b.char_name) : [...p, b.char_name])}
+                            className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer text-left ${
+                              disabled ? "bg-gbus-bg/40 border-gbus-border/20 text-gbus-text-dim cursor-not-allowed opacity-40"
+                              : sel ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light shadow-[0_0_10px_rgba(108,92,231,0.12)]"
+                              : "border-gbus-border/40 text-gbus-text-muted hover:border-gbus-primary/30 hover:text-gbus-text"
+                            }`}>
+                            <span>{b.char_name}{done ? " (등록됨)" : lvBlocked ? " (레벨 부족)" : ""}</span>
+                            {(b.tamer_lv != null || b.digi_lv != null) && (
+                              <span className="flex items-center gap-1 mt-0.5">
+                                {b.tamer_lv != null && <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-success/10 text-gbus-success border border-gbus-success/30">{b.tamer_lv}</span>}
+                                {b.digi_lv != null && <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-accent-light/10 text-gbus-accent-light border border-gbus-accent-light/30">{b.digi_lv}</span>}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+                <div className="flex gap-2">
+                  <Button onClick={handleReserve} loading={reserving} disabled={selectedBarracks.length === 0} className="flex-1 btn-shine">
+                    {selectedBarracks.length}개 참가 신청
+                  </Button>
+                  <Button variant="ghost" onClick={() => { setShowReservePanel(false); setSelectedBarracks([]); }}>취소</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* 승객 예약 (mass_bus가 아닌 경우) */}
+        {!isMassBus && !isDriver && profile?.verified && (session.status === "waiting" || session.status === "running") && (
+          <div className="glass rounded-2xl p-6 mb-5">
+            {myPending.length > 0 && (
+              <div className="bg-gbus-warning/8 border border-gbus-warning/20 rounded-xl p-4 mb-4">
+                <p className="text-sm font-semibold text-gbus-warning">참여 신청 완료 — 파장 수락 대기 중</p>
+                <p className="text-xs text-gbus-text-dim mt-1">{myPending.map((r) => r.char_name).join(", ")}</p>
+              </div>
+            )}
+            {!showReservePanel ? (
+              <Button onClick={() => setShowReservePanel(true)} className="w-full btn-shine" size="lg">{isParty ? "참여 신청" : "예약하기"}</Button>
+            ) : (
+              <div>
+                <h3 className="font-bold mb-4 flex items-center gap-2.5">
+                  <span className="w-1.5 h-4 bg-gbus-primary rounded-full" />캐릭터 선택
+                </h3>
+                {barracks.length === 0 ? (
+                  <p className="text-sm text-gbus-text-muted mb-3">
+                    등록된 배럭이 없습니다. <a href="/barrack" className="text-gbus-primary hover:text-gbus-primary-light transition-colors font-medium">배럭 관리</a>에서 추가하세요.
+                  </p>
+                ) : (
+                  <>
+                  {minDigiLv > 0 && (
+                    <p className="text-xs text-gbus-warning mb-2 font-medium">이 던전은 하인 Lv.{minDigiLv} 이상만 입장 가능합니다</p>
+                  )}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4 max-h-[250px] overflow-y-auto pr-1">
+                    {barracks.map((b) => {
+                      const done = reservations.some((r) => r.char_name === b.char_name && r.user_id === user?.id && !r.is_beginner);
+                      const lvBlocked = minDigiLv > 0 && (b.digi_lv == null || b.digi_lv < minDigiLv);
+                      const disabled = (done && !isBeginner) || lvBlocked;
+                      const sel = selectedBarracks.includes(b.char_name);
+                      return (
+                        <button key={b.id} disabled={disabled} onClick={() => setSelectedBarracks((p) => sel ? p.filter((n) => n !== b.char_name) : [...p, b.char_name])}
+                          className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer text-left ${
+                            disabled ? "bg-gbus-bg/40 border-gbus-border/20 text-gbus-text-dim cursor-not-allowed opacity-40"
+                            : sel ? "bg-gbus-primary/15 border-gbus-primary/40 text-gbus-primary-light shadow-[0_0_10px_rgba(108,92,231,0.12)]"
+                            : "border-gbus-border/40 text-gbus-text-muted hover:border-gbus-primary/30 hover:text-gbus-text"
+                          }`}>
+                          <span>{b.char_name}{done && !isBeginner ? " (예약됨)" : lvBlocked ? " (레벨 부족)" : ""}</span>
+                          {(b.tamer_lv != null || b.digi_lv != null) && (
+                            <span className="flex items-center gap-1 mt-0.5">
+                              {b.tamer_lv != null && (
+                                <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-success/10 text-gbus-success border border-gbus-success/30">
+                                  {b.tamer_lv}
+                                </span>
+                              )}
+                              {b.digi_lv != null && (
+                                <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-gbus-accent-light/10 text-gbus-accent-light border border-gbus-accent-light/30">
+                                  {b.digi_lv}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* 초행 체크박스 */}
+                  <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isBeginner}
+                      onChange={(e) => { setIsBeginner(e.target.checked); setSelectedBarracks([]); }}
+                      className="w-4 h-4 rounded border-gbus-border accent-gbus-primary"
+                    />
+                    <span className="text-sm text-gbus-text-muted">초행 (같은 캐릭터 중복 등록)</span>
+                  </label>
+                  </>
+                )}
+                {/* 포지션 선택 (파티만) */}
+                {isParty && (
+                  <div className="mb-4">
+                    <label className="text-sm font-semibold text-gbus-text-muted block mb-2.5">
+                      포지션 <span className="text-gbus-text-dim font-normal">(미선택 = 올포지션)</span>
+                    </label>
+                    <div className="flex gap-2">
+                      {(Object.entries(POSITIONS) as [Position, typeof POSITIONS[Position]][]).map(([key, { label, color }]) => {
+                        const sel = selectedPositions.includes(key);
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => togglePosition(key)}
+                            className={`flex-1 py-2.5 text-sm rounded-xl transition-all duration-300 cursor-pointer border font-semibold ${
+                              sel
+                                ? color === "danger"
+                                  ? "bg-gbus-danger/15 border-gbus-danger/40 text-gbus-danger shadow-[0_0_12px_rgba(255,118,117,0.15)]"
+                                  : color === "accent"
+                                    ? "bg-gbus-accent/15 border-gbus-accent/40 text-gbus-accent shadow-[0_0_12px_rgba(0,206,201,0.15)]"
+                                    : "bg-gbus-success/15 border-gbus-success/40 text-gbus-success shadow-[0_0_12px_rgba(0,184,148,0.15)]"
+                                : "border-gbus-border/40 text-gbus-text-dim hover:border-gbus-text-dim hover:text-gbus-text-muted"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedPositions.length === 0 && (
+                      <p className="text-xs text-gbus-primary-light mt-2 font-medium">올포지션으로 참여합니다</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button onClick={handleReserve} loading={reserving} disabled={selectedBarracks.length === 0} className="flex-1 btn-shine">
+                    {isParty ? `${selectedBarracks.length}개 참여 신청` : `${selectedBarracks.length}개 예약`}
+                  </Button>
+                  <Button variant="ghost" onClick={() => { setShowReservePanel(false); setSelectedBarracks([]); setSelectedPositions([]); }}>취소</Button>
+                </div>
+              </div>
+            )}
+            {!isParty && myNextWaiting && (
+              <div className="mt-4 bg-gbus-bg/40 rounded-xl p-4 text-sm border border-gbus-border/20">
+                <span className="text-gbus-text-dim">내 순번:</span>{" "}
+                <span className="font-bold text-gbus-primary-light">#{myNextWaiting.queue_no}</span>
+                <span className="text-gbus-text-dim ml-1">({myNextWaiting.char_name})</span>
+                <span className="text-gbus-text-dim ml-3">| ~{estimatedMinutes}분</span>
+              </div>
+            )}
+          </div>
+        )}
+
+
+        </aside>
+      </div>
       </main>
 
       {reportTarget && user && (

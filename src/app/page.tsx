@@ -1,6 +1,20 @@
-import Link from "next/link";
+"use client";
 
-export default function HomePage() {
+import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, Suspense } from "react";
+
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const code = searchParams.get("code");
+    if (code) {
+      router.push(`/auth/callback?code=${code}`);
+    }
+  }, [searchParams, router]);
+
   return (
     <div className="min-h-screen flex flex-col overflow-hidden">
       {/* Hero */}
@@ -146,5 +160,13 @@ export default function HomePage() {
         <p className="text-[10px] text-gbus-text-dim/40 mt-2">이 서비스는 비공식 팬 커뮤니티 도구이며, 게임 개발사 및 퍼블리셔와 무관합니다.</p>
       </footer>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen hero-bg" />}>
+      <HomeContent />
+    </Suspense>
   );
 }

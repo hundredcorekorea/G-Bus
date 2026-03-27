@@ -24,44 +24,15 @@ interface PostTypeConfig {
   showPrice: boolean;
   showPriceType: boolean; // 고정가/역경매 선택
   showSchedule: boolean;
-  showRoundMinutes: boolean;
   color: string; // active 색상 키
 }
 
 const POST_CONFIGS: PostTypeConfig[] = [
   {
-    type: "party", label: "던전 공팟 모집",
-    dungeonNames: DUNGEON_NAMES, dungeonLabel: "던전",
-    isDriver: false, needsBarrack: false, multiSelect: true,
-    showPrice: false, showPriceType: false, showSchedule: false, showRoundMinutes: false,
-    color: "primary",
-  },
-  {
-    type: "bus", label: "승객 모집(기사)",
-    dungeonNames: DUNGEON_NAMES, dungeonLabel: "던전",
-    isDriver: true, needsBarrack: false, multiSelect: true,
-    showPrice: true, showPriceType: false, showSchedule: false, showRoundMinutes: true,
-    color: "accent",
-  },
-  {
-    type: "field_party", label: "필드 파티 모집",
-    dungeonNames: FIELD_NAMES, dungeonLabel: "지역",
-    isDriver: false, needsBarrack: false, multiSelect: false,
-    showPrice: false, showPriceType: false, showSchedule: false, showRoundMinutes: false,
-    color: "success",
-  },
-  {
-    type: "exp_party", label: "경험치 파티 모집(기사)",
-    dungeonNames: EXP_NAMES, dungeonLabel: "던전",
-    isDriver: true, needsBarrack: false, multiSelect: false,
-    showPrice: true, showPriceType: false, showSchedule: false, showRoundMinutes: true,
-    color: "warning",
-  },
-  {
     type: "mass_bus", label: "던전 승객 모집(대량)",
     dungeonNames: MASS_BUS_NAMES, dungeonLabel: "던전",
     isDriver: false, needsBarrack: true, multiSelect: false,
-    showPrice: true, showPriceType: true, showSchedule: true, showRoundMinutes: true,
+    showPrice: true, showPriceType: true, showSchedule: true,
     color: "primary",
   },
 ];
@@ -87,12 +58,11 @@ const COLOR_MAP: Record<string, { active: string; badge: "default" | "accent" | 
 
 export default function NewSessionPage() {
   const { profile } = useAuth();
-  const [postType, setPostType] = useState<PostType>("party");
-  const [selectedDungeonNames, setSelectedDungeonNames] = useState<string[]>([DUNGEON_NAMES[0]]);
+  const [postType, setPostType] = useState<PostType>("mass_bus");
+  const [selectedDungeonNames, setSelectedDungeonNames] = useState<string[]>([MASS_BUS_NAMES[0]]);
   const [priceType, setPriceType] = useState<PriceType>("fixed");
   const [priceT, setPriceT] = useState("");
   const [scheduledStart, setScheduledStart] = useState("");
-  const [avgRoundMinutes, setAvgRoundMinutes] = useState(10);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -202,7 +172,7 @@ export default function NewSessionPage() {
       post_type: postType,
       price_type: config.showPriceType ? priceType : "fixed",
       min_count: minCount,
-      avg_round_minutes: avgRoundMinutes,
+      avg_round_minutes: 10,
       price_t: priceT ? Number(priceT) : null,
       scheduled_start: scheduledStart ? new Date(scheduledStart).toISOString() : null,
       party_size: (postType === "party" || postType === "field_party") ? partySize : null,
@@ -240,35 +210,7 @@ export default function NewSessionPage() {
 
         <div className="glass rounded-2xl p-6">
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            {/* 글 타입 선택 */}
-            <div>
-              <label className="text-sm font-semibold text-gbus-text-muted block mb-2.5">글 타입</label>
-              <div className="flex flex-wrap gap-2">
-                {availableConfigs.map((c) => {
-                  const colorKey = c.color;
-                  const colors = COLOR_MAP[colorKey] || COLOR_MAP.primary;
-                  return (
-                    <button
-                      key={c.type}
-                      type="button"
-                      onClick={() => handlePostTypeChange(c.type)}
-                      className={`px-3 py-2.5 text-xs rounded-xl transition-all duration-300 cursor-pointer border font-semibold ${
-                        postType === c.type
-                          ? colors.active
-                          : "border-gbus-border/40 text-gbus-text-dim hover:border-gbus-text-dim hover:text-gbus-text-muted"
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  );
-                })}
-              </div>
-              {availableConfigs.length <= 2 && (
-                <p className="text-xs text-gbus-text-dim mt-2">
-                  인증 시 추가 글 타입이 해금됩니다.
-                </p>
-              )}
-            </div>
+            {/* 단일 글 타입이므로 선택 UI 숨김 */}
 
             {/* 던전/지역 선택 */}
             <div>
@@ -357,10 +299,6 @@ export default function NewSessionPage() {
 
             {config.showSchedule && (
               <Input label="시작 시간대 (선택)" type="datetime-local" value={scheduledStart} onChange={(e) => setScheduledStart(e.target.value)} />
-            )}
-
-            {config.showRoundMinutes && (
-              <Input label="회차당 예상 소요 시간 (분)" type="number" min={1} value={String(avgRoundMinutes)} onChange={(e) => setAvgRoundMinutes(Number(e.target.value))} />
             )}
 
             {/* 미리보기 */}
